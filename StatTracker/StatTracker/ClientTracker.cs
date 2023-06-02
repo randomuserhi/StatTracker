@@ -38,10 +38,15 @@ namespace StatTracker
 
         public static bool GetPlayer(PlayerAgent player, out PlayerStats stats)
         {
-            ulong id = player.Owner.Lookup;
+            return GetPlayer(player.Owner, out stats);
+        }
+
+        public static bool GetPlayer(SNetwork.SNet_Player player, out PlayerStats stats)
+        {
+            ulong id = player.Lookup;
             if (!players.ContainsKey(id))
             {
-                stats = new PlayerStats(id, player.PlayerName, player.Owner.IsBot);
+                stats = new PlayerStats(id, player.NickName, player.IsBot);
                 players.Add(id, stats);
                 return false;
             }

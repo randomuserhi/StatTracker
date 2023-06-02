@@ -3,16 +3,8 @@ using API;
 using CharacterDestruction;
 using Enemies;
 using HarmonyLib;
-using Il2CppSystem;
 using Player;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
-using static GameData.GD;
-using static UnityEngine.UI.GridLayoutGroup;
 
 namespace StatTracker.Patches
 {
@@ -81,6 +73,175 @@ namespace StatTracker.Patches
         }
 
         #endregion
+
+        #region Keeping track of mines
+
+        private class Mine
+        {
+            public string name;
+            public SNetwork.SNet_Player owner;   
+            public Mine(SNetwork.SNet_Player owner, string name)
+            {
+                this.owner = owner;
+                this.name = name;
+            }
+        }
+        private static Dictionary<int, Mine> mines = new Dictionary<int, Mine>();
+        private static Mine? currentMine = null;
+
+        [HarmonyPatch(typeof(MineDeployerInstance), nameof(MineDeployerInstance.OnSpawn))]
+        [HarmonyPrefix]
+        public static void Spawn(MineDeployerInstance __instance, pItemSpawnData spawnData)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+
+            int instanceID = __instance.gameObject.GetInstanceID();
+
+            SNetwork.SNet_Player player;
+            if (spawnData.owner.TryGetPlayer(out player))
+            {
+                if (ConfigManager.Debug)
+                    APILogger.Debug(Module.Name, $"Mine instance spawned by {player.NickName} - {spawnData.itemData.itemID_gearCRC} [{instanceID}]");
+
+                switch (spawnData.itemData.itemID_gearCRC)
+                {
+                    case 125: // Mine deployer mine
+                        mines.Add(instanceID, new Mine(player, "Mine Deployer"));
+                        break;
+                    case 139: // Consumable mine
+                        mines.Add(instanceID, new Mine(player, "Consumable Mine"));
+                        break;
+                    /*144: // Cfoam mine
+                        break;*/
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(MineDeployerInstance_Detonate_Explosive), nameof(MineDeployerInstance_Detonate_Explosive.DoExplode))]
+        [HarmonyPrefix]
+        public static void Prefix_DoExplode(MineDeployerInstance_Detonate_Explosive __instance)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+
+            int instanceID = __instance.gameObject.GetInstanceID();
+            if (ConfigManager.Debug)
+                APILogger.Debug(Module.Name, $"Mine instance [{instanceID}] detonated.");
+
+            if (mines.ContainsKey(instanceID))
+            {
+                currentMine = mines[instanceID];
+                mines.Remove(__instance.gameObject.GetInstanceID());
+            }
+            else if (ConfigManager.Debug)
+                APILogger.Debug(Module.Name, $"Mine did not exist in catalogue, this should not happen.");
+        }
+
+        [HarmonyPatch(typeof(MineDeployerInstance_Detonate_Explosive), nameof(MineDeployerInstance_Detonate_Explosive.DoExplode))]
+        [HarmonyPostfix]
+        public static void Postfix_DoExplode()
+        {
+            currentMine = null;
+        }
+
+        #endregion
+
+        [HarmonyPatch(typeof(Dam_EnemyDamageBase), nameof(Dam_EnemyDamageBase.ReceiveExplosionDamage))]
+        [HarmonyPrefix]
+        public static void Prefix_ExplosionDamage(Dam_EnemyDamageBase __instance, pExplosionDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+
+            // Reset limb destruction
+            limbBroke = false;
+
+            float damage = data.damage.Get(__instance.HealthMax);
+            bool willDie = __instance.WillDamageKill(damage);
+            damage = Mathf.Min(damage, __instance.Health);
+            if (damage == 0) willDie = false; // Note(randomuserhi): If damage is 0, enemy is already dead.
+
+            // Record damage data
+            if (currentMine != null)
+            {
+                // Record damage done
+                PlayerStats stats;
+                ClientTracker.GetPlayer(currentMine.owner, out stats);
+
+                // Record enemy data
+                EnemyAgent owner = __instance.Owner;
+                EnemyData eData;
+                HostTracker.GetEnemyData(owner, out eData);
+
+                string enemyType = eData.enemyType;
+
+                // player stats
+                GearData mine = stats.tools[currentMine.name];
+                mine.damage += damage;
+
+                if (ConfigManager.Debug)
+                {
+                    APILogger.Debug(Module.Name, $"[Prefix] {damage} Mine Damage done by {currentMine.owner.NickName}. IsBot: {currentMine.owner.IsBot}");
+                    APILogger.Debug(Module.Name, $"[Prefix] {mine.name}: {mine.damage}");
+                }
+
+                // register kill
+                if (willDie)
+                {
+                    mine.enemiesKilled[enemyType] += 1;
+
+                    if (ConfigManager.Debug)
+                        APILogger.Debug(Module.Name, $"{mine.name}: {mine.enemiesKilled[enemyType]} {enemyType} killed");
+                }
+            }
+            else if (ConfigManager.Debug)
+                APILogger.Debug(Module.Name, $"[Prefix] Unable to find source mine.");
+        }
+
+        // Postfix to handle limb break
+        [HarmonyPatch(typeof(Dam_EnemyDamageBase), nameof(Dam_EnemyDamageBase.ReceiveExplosionDamage))]
+        [HarmonyPostfix]
+        public static void Postfix_ExplosionDamage(Dam_EnemyDamageBase __instance, pExplosionDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+            if (!limbBroke) return;
+
+            // Get damage data
+            if (currentMine != null)
+            {
+                // Get stats
+                PlayerStats stats;
+                ClientTracker.GetPlayer(currentMine.owner, out stats);
+
+                // Get enemy data
+                EnemyAgent owner = __instance.Owner;
+                EnemyData eData;
+                HostTracker.GetEnemyData(owner, out eData);
+                LimbData lData;
+                if (limbBrokeID > 0)
+                    lData = eData.limbData[__instance.DamageLimbs[limbBrokeID].name];
+                else return;
+
+                if (lData.breaker != null)
+                {
+                    if (ConfigManager.Debug) APILogger.Debug(Module.Name, $"[Postfix] Limb is already destroyed.");
+                    return;
+                }
+                lData.breaker = stats.playerID;
+
+                // player stats
+                lData.breakerGear = currentMine.name;
+
+                if (ConfigManager.Debug)
+                    if (lData.breaker != null)
+                        APILogger.Debug(Module.Name, $"[Postfix] Limb {lData.name} broken by {currentMine.owner.NickName} with {lData.breakerGear}");
+                    else
+                        APILogger.Debug(Module.Name, $"[Postfix] lData.breaker was null, this should not happen.");
+            }
+            else if (ConfigManager.Debug)
+                APILogger.Debug(Module.Name, $"[Postfix] Unable to find source agent.");
+
+            // Reset limb destruction
+            limbBroke = false;
+        }
 
         [HarmonyPatch(typeof(Dam_EnemyDamageBase), nameof(Dam_EnemyDamageBase.ReceiveBulletDamage))]
         [HarmonyPrefix]

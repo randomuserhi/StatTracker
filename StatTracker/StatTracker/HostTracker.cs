@@ -19,7 +19,6 @@ namespace StatTracker
         //                                                                    thats already dead, thus counting as a dud hit
         public static Dictionary<int, EnemyData> enemyData = new Dictionary<int, EnemyData>();
 
-
         public static void OnRundownStart()
         {
             if (ConfigManager.Debug) APILogger.Debug(Module.Name, "OnRundownStart (host) => Reset internal dictionaries.");
