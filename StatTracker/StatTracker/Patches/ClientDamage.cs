@@ -12,7 +12,7 @@ using UnityEngine;
 namespace StatTracker.Patches
 {
     [HarmonyPatch]
-    public static class ClientDamagePatches
+    public static class ClientDamage
     {
         // Clear out enemies that die over network
         [HarmonyPatch(typeof(EnemyAppearance), nameof(EnemyAppearance.OnDead))]

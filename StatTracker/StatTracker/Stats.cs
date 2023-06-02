@@ -18,6 +18,9 @@ namespace StatTracker
             this.createDefault = createDefault;
         }
 
+        public IEnumerable<TKey> Keys { get { return tracker.Keys; } }
+        public IEnumerable<TValue> Values { get { return tracker.Values; } }
+
         public TValue this[TKey index]
         {
             get {
@@ -37,9 +40,6 @@ namespace StatTracker
     {
         public readonly string name;
         public float damage;
-
-        public int bulletsHit;
-        public int dudBulletsHit;
 
         public LimbDamageData(string name)
         {
@@ -75,6 +75,7 @@ namespace StatTracker
 
         public bool alive = true;
         public ulong? killer = null;
+        public string? killerGear = null;
 
         public float health;
         public float healthMax;
@@ -98,7 +99,29 @@ namespace StatTracker
         {
             this.name = name;
         }
-     }
+    }
+
+    public struct DamageEvent
+    {
+        public enum Type
+        {
+            FallDamage,
+            Tongue,
+            Melee,
+            ShooterPellet,
+            Mine,
+            PlayerBullet
+        }
+
+        public Type type;
+        public long timestamp;
+        public float damage;
+
+        public int? enemyInstanceID;
+
+        public ulong playerID;
+        public string gearName; // name of gear if player did damage to you (sentry, gun name, mine deployer, consumable mine etc...) 
+    }
 
     public class PlayerStats
     {
@@ -122,21 +145,21 @@ namespace StatTracker
         // => includes consumables as tool (consumable mine should show up here as well)
         public StatTrack<string, GearData> tools = new StatTrack<string, GearData>(delegate (string name) { return new GearData(name); });
 
+        // List of damage events
+        public List<DamageEvent> damageTaken = new List<DamageEvent>();
+
+        // TODO(randomuserhi)
         // Dictionary of "Pack Public Name" => number of times used on this player
         public StatTrack<string, int> packsUsed = new StatTrack<string, int>(delegate { return 0; });
 
-        // Dictionary of "Pack Public Name" => number of times a pack was given away by this player
-        public StatTrack<string, int> packsGiven = new StatTrack<string, int>(delegate { return 0; });
-
         // TODO(randomuserhi)
+        // => deaths and when and who killed you
         // => number of revives
         // => number of deaths
-        // => list of enemies that killed you (instance ID) => just make sure to record their enemy data
-        // => damage taken and by which enemies (individuals, so u can be like "yo this 1 shooter actually shreked you")
         // => enemy tongues dodged
         // => snatches dodged
         // => players saved from tongues
-        // => damage taken from other players (and who)
         // => damage dealt to other players (and who)
+        // => packs given to other players (and who)
     }
 }

@@ -15,6 +15,12 @@ namespace StatTracker
                 "enable",
                 false,
                 "Enables debug messages when true.");
+
+            reportPath = configFile.Bind(
+                "Reports",
+                "path",
+                "",
+                "Location to save expedition reports.");
         }
 
         public static bool Debug
@@ -23,6 +29,13 @@ namespace StatTracker
             set { debug.Value = value; }
         }
 
+        public static string ReportPath
+        {
+            get { return reportPath.Value; }
+            set { reportPath.Value = value; }
+        }
+
         private static ConfigEntry<bool> debug;
+        private static ConfigEntry<string> reportPath;
     }
 }

@@ -1,12 +1,15 @@
 ﻿using API;
 using Player;
 using Enemies;
+using StatTracker.Patches;
 
 namespace StatTracker
 {
     // refers to data recorded by host which is 100% accurate and has full information
     public class HostTracker
     {
+        public static long startTime = 0;
+
         public static Dictionary<ulong, PlayerStats> players = new Dictionary<ulong, PlayerStats>();
         
         // Dictionary of "Enemy public name" => Dictionary of "instanceID" => stats on damage dealt to the enemy
@@ -23,7 +26,11 @@ namespace StatTracker
         {
             if (ConfigManager.Debug) APILogger.Debug(Module.Name, "OnRundownStart (host) => Reset internal dictionaries.");
 
+            startTime = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds();
             players.Clear();
+
+            HostDamage.mines.Clear();
+            HostPlayerDamage.projectileOwners.Clear();
         }
 
         public static bool GetEnemyData(EnemyAgent enemy, out EnemyData data)
@@ -32,6 +39,8 @@ namespace StatTracker
             if (!enemyData.ContainsKey(instanceID))
             {
                 data = new EnemyData(instanceID, enemy.EnemyData.name);
+                data.healthMax = enemy.Damage.HealthMax;
+                data.health = enemy.Damage.Health;
                 enemyData.Add(instanceID, data);
                 return false;
             }
@@ -42,10 +51,15 @@ namespace StatTracker
 
         public static bool GetPlayer(PlayerAgent player, out PlayerStats stats)
         {
-            ulong id = player.Owner.Lookup;
+            return GetPlayer(player.Owner, out stats);
+        }
+
+        public static bool GetPlayer(SNetwork.SNet_Player player, out PlayerStats stats)
+        {
+            ulong id = player.Lookup;
             if (!players.ContainsKey(id))
             {
-                stats = new PlayerStats(id, player.PlayerName, player.Owner.IsBot);
+                stats = new PlayerStats(id, player.NickName, player.IsBot);
                 players.Add(id, stats);
                 return false;
             }

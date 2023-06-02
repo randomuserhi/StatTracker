@@ -5,17 +5,18 @@ using Enemies;
 using HarmonyLib;
 using Player;
 using UnityEngine;
+using static GameData.GD;
 
 namespace StatTracker.Patches
 {
     [HarmonyPatch]
-    public static class HostDamagePatches
+    public static class HostDamage
     {
         #region Detecting Sentry Shots
 
         // Flag to determine if next shot is performed by a sentry
-        private static string? sentryName = null;
-        private static bool sentryShot = false;
+        public static string? sentryName = null;
+        public static bool sentryShot = false;
 
         [HarmonyPatch(typeof(SentryGunInstance_Firing_Bullets), nameof(SentryGunInstance_Firing_Bullets.FireBullet))]
         [HarmonyPrefix]
@@ -76,7 +77,7 @@ namespace StatTracker.Patches
 
         #region Keeping track of mines
 
-        private class Mine
+        public class Mine
         {
             public string name;
             public SNetwork.SNet_Player owner;   
@@ -86,8 +87,8 @@ namespace StatTracker.Patches
                 this.name = name;
             }
         }
-        private static Dictionary<int, Mine> mines = new Dictionary<int, Mine>();
-        private static Mine? currentMine = null;
+        public static Dictionary<int, Mine> mines = new Dictionary<int, Mine>();
+        public static Mine? currentMine = null;
 
         [HarmonyPatch(typeof(MineDeployerInstance), nameof(MineDeployerInstance.OnSpawn))]
         [HarmonyPrefix]
@@ -164,7 +165,7 @@ namespace StatTracker.Patches
             {
                 // Record damage done
                 PlayerStats stats;
-                ClientTracker.GetPlayer(currentMine.owner, out stats);
+                HostTracker.GetPlayer(currentMine.owner, out stats);
 
                 // Record enemy data
                 EnemyAgent owner = __instance.Owner;
@@ -188,6 +189,10 @@ namespace StatTracker.Patches
                 {
                     mine.enemiesKilled[enemyType] += 1;
 
+                    eData.alive = false;
+                    eData.killer = stats.playerID;
+                    eData.killerGear = mine.name;
+
                     if (ConfigManager.Debug)
                         APILogger.Debug(Module.Name, $"{mine.name}: {mine.enemiesKilled[enemyType]} {enemyType} killed");
                 }
@@ -209,7 +214,7 @@ namespace StatTracker.Patches
             {
                 // Get stats
                 PlayerStats stats;
-                ClientTracker.GetPlayer(currentMine.owner, out stats);
+                HostTracker.GetPlayer(currentMine.owner, out stats);
 
                 // Get enemy data
                 EnemyAgent owner = __instance.Owner;
@@ -219,6 +224,8 @@ namespace StatTracker.Patches
                 if (limbBrokeID > 0)
                     lData = eData.limbData[__instance.DamageLimbs[limbBrokeID].name];
                 else return;
+
+                eData.health = __instance.Health;
 
                 if (lData.breaker != null)
                 {
@@ -270,7 +277,7 @@ namespace StatTracker.Patches
 
                 // Record damage done
                 PlayerStats stats;
-                ClientTracker.GetPlayer(p, out stats);
+                HostTracker.GetPlayer(p, out stats);
 
                 // Record enemy data
                 EnemyAgent owner = __instance.Owner;
@@ -308,6 +315,10 @@ namespace StatTracker.Patches
                         {
                             weapon.enemiesKilled[enemyType] += 1;
 
+                            eData.alive = false;
+                            eData.killer = stats.playerID;
+                            eData.killerGear = weapon.name;
+
                             if (ConfigManager.Debug)
                                 APILogger.Debug(Module.Name, $"{weapon.name}: {weapon.enemiesKilled[enemyType]} {enemyType} killed");
                         }
@@ -334,6 +345,10 @@ namespace StatTracker.Patches
                     if (willDie)
                     {
                         sentry.enemiesKilled[enemyType] += 1;
+
+                        eData.alive = false;
+                        eData.killer = stats.playerID;
+                        eData.killerGear = sentry.name;
 
                         if (ConfigManager.Debug)
                             APILogger.Debug(Module.Name, $"[Prefix] {sentry.name}: {sentry.enemiesKilled[enemyType]} {enemyType} killed");
@@ -367,7 +382,7 @@ namespace StatTracker.Patches
 
                 // Get stats
                 PlayerStats stats;
-                ClientTracker.GetPlayer(p, out stats);
+                HostTracker.GetPlayer(p, out stats);
 
                 // Get enemy data
                 EnemyAgent owner = __instance.Owner;
@@ -377,6 +392,8 @@ namespace StatTracker.Patches
                 if (data.limbID > 0)
                     lData = eData.limbData[__instance.DamageLimbs[data.limbID].name];
                 else return;
+
+                eData.health = __instance.Health;
 
                 if (lData.breaker != null)
                 {
@@ -449,7 +466,7 @@ namespace StatTracker.Patches
 
                 // Record damage done
                 PlayerStats stats;
-                ClientTracker.GetPlayer(p, out stats);
+                HostTracker.GetPlayer(p, out stats);
 
                 // Record enemy data
                 EnemyData eData;
@@ -484,6 +501,10 @@ namespace StatTracker.Patches
                     {
                         weapon.enemiesKilled[enemyType] += 1;
 
+                        eData.alive = false;
+                        eData.killer = stats.playerID;
+                        eData.killerGear = weapon.name;
+
                         if (ConfigManager.Debug)
                             APILogger.Debug(Module.Name, $"[Prefix] {weapon.name}: {weapon.enemiesKilled[enemyType]} {enemyType} killed");
                     }
@@ -516,7 +537,7 @@ namespace StatTracker.Patches
 
                 // Get stats
                 PlayerStats stats;
-                ClientTracker.GetPlayer(p, out stats);
+                HostTracker.GetPlayer(p, out stats);
 
                 // Get enemy data
                 EnemyAgent owner = __instance.Owner;
@@ -526,6 +547,8 @@ namespace StatTracker.Patches
                 if (data.limbID > 0)
                     lData = eData.limbData[__instance.DamageLimbs[data.limbID].name];
                 else return;
+
+                eData.health = __instance.Health;
 
                 if (lData.breaker != null)
                 {
