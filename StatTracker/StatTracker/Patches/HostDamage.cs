@@ -107,7 +107,7 @@ namespace StatTracker.Patches
                 switch (spawnData.itemData.itemID_gearCRC)
                 {
                     case 125: // Mine deployer mine
-                        mines.Add(instanceID, new Mine(player, "Mine Deployer"));
+                        mines.Add(instanceID, new Mine(player, "Krieger O4"));
                         break;
                     case 139: // Consumable mine
                         mines.Add(instanceID, new Mine(player, "Consumable Mine"));
@@ -146,6 +146,8 @@ namespace StatTracker.Patches
 
         #endregion
 
+        private static float oldHealth = 0;
+
         [HarmonyPatch(typeof(Dam_EnemyDamageBase), nameof(Dam_EnemyDamageBase.ReceiveExplosionDamage))]
         [HarmonyPrefix]
         public static void Prefix_ExplosionDamage(Dam_EnemyDamageBase __instance, pExplosionDamageData data)
@@ -155,14 +157,20 @@ namespace StatTracker.Patches
             // Reset limb destruction
             limbBroke = false;
 
-            float damage = data.damage.Get(__instance.HealthMax);
-            bool willDie = __instance.WillDamageKill(damage);
-            damage = Mathf.Min(damage, __instance.Health);
-            if (damage == 0) willDie = false; // Note(randomuserhi): If damage is 0, enemy is already dead.
+            oldHealth = __instance.Health;
+        }
+        [HarmonyPatch(typeof(Dam_EnemyDamageBase), nameof(Dam_EnemyDamageBase.ReceiveExplosionDamage))]
+        [HarmonyPostfix]
+        public static void Postfix_ExplosionDamage(Dam_EnemyDamageBase __instance, pExplosionDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
 
             // Record damage data
             if (currentMine != null)
             {
+                float damage = oldHealth - __instance.Health;
+                bool willDie = __instance.Health <= 0 && damage > 0;
+
                 // Record damage done
                 PlayerStats stats;
                 HostTracker.GetPlayer(currentMine.owner, out stats);
@@ -192,36 +200,17 @@ namespace StatTracker.Patches
                     eData.alive = false;
                     eData.killer = stats.playerID;
                     eData.killerGear = mine.name;
+                    eData.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
 
                     if (ConfigManager.Debug)
                         APILogger.Debug(Module.Name, $"{mine.name}: {mine.enemiesKilled[enemyType]} {enemyType} killed");
                 }
-            }
-            else if (ConfigManager.Debug)
-                APILogger.Debug(Module.Name, $"[Prefix] Unable to find source mine.");
-        }
 
-        // Postfix to handle limb break
-        [HarmonyPatch(typeof(Dam_EnemyDamageBase), nameof(Dam_EnemyDamageBase.ReceiveExplosionDamage))]
-        [HarmonyPostfix]
-        public static void Postfix_ExplosionDamage(Dam_EnemyDamageBase __instance, pExplosionDamageData data)
-        {
-            if (!SNetwork.SNet.IsMaster) return;
-            if (!limbBroke) return;
+                // Get limb data
+                if (!limbBroke) return;
 
-            // Get damage data
-            if (currentMine != null)
-            {
-                // Get stats
-                PlayerStats stats;
-                HostTracker.GetPlayer(currentMine.owner, out stats);
-
-                // Get enemy data
-                EnemyAgent owner = __instance.Owner;
-                EnemyData eData;
-                HostTracker.GetEnemyData(owner, out eData);
                 LimbData lData;
-                if (limbBrokeID > 0)
+                if (limbBrokeID >= 0)
                     lData = eData.limbData[__instance.DamageLimbs[limbBrokeID].name];
                 else return;
 
@@ -244,7 +233,7 @@ namespace StatTracker.Patches
                         APILogger.Debug(Module.Name, $"[Postfix] lData.breaker was null, this should not happen.");
             }
             else if (ConfigManager.Debug)
-                APILogger.Debug(Module.Name, $"[Postfix] Unable to find source agent.");
+                APILogger.Debug(Module.Name, $"[Prefix] Unable to find source mine.");
 
             // Reset limb destruction
             limbBroke = false;
@@ -259,15 +248,21 @@ namespace StatTracker.Patches
             // Reset limb destruction
             limbBroke = false;
 
-            float damage = AgentModifierManager.ApplyModifier(__instance.Owner, AgentModifier.ProjectileResistance, data.damage.Get(__instance.HealthMax));
-            bool willDie = __instance.WillDamageKill(damage);
-            damage = Mathf.Min(damage, __instance.Health);
-            if (damage == 0) willDie = false; // Note(randomuserhi): If damage is 0, enemy is already dead.
+            oldHealth = __instance.Health;
+        }
+        [HarmonyPatch(typeof(Dam_EnemyDamageBase), nameof(Dam_EnemyDamageBase.ReceiveBulletDamage))]
+        [HarmonyPostfix]
+        public static void Postfix_BulletDamage(Dam_EnemyDamageBase __instance, pBulletDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
 
             // Record damage data
             Agent sourceAgent;
             if (data.source.TryGet(out sourceAgent))
             {
+                float damage = oldHealth - __instance.Health;
+                bool willDie = __instance.Health <= 0 && damage > 0;
+
                 PlayerAgent? p = sourceAgent.TryCast<PlayerAgent>();
                 if (p == null) // Check damage was done by a player
                 {
@@ -284,7 +279,7 @@ namespace StatTracker.Patches
                 EnemyData eData;
                 HostTracker.GetEnemyData(owner, out eData);
                 LimbData lData;
-                if (data.limbID > 0)
+                if (data.limbID >= 0)
                     lData = eData.limbData[__instance.DamageLimbs[data.limbID].name];
                 else
                     lData = eData.limbData["unknown"];
@@ -318,6 +313,7 @@ namespace StatTracker.Patches
                             eData.alive = false;
                             eData.killer = stats.playerID;
                             eData.killerGear = weapon.name;
+                            eData.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
 
                             if (ConfigManager.Debug)
                                 APILogger.Debug(Module.Name, $"{weapon.name}: {weapon.enemiesKilled[enemyType]} {enemyType} killed");
@@ -349,6 +345,7 @@ namespace StatTracker.Patches
                         eData.alive = false;
                         eData.killer = stats.playerID;
                         eData.killerGear = sentry.name;
+                        eData.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
 
                         if (ConfigManager.Debug)
                             APILogger.Debug(Module.Name, $"[Prefix] {sentry.name}: {sentry.enemiesKilled[enemyType]} {enemyType} killed");
@@ -356,40 +353,11 @@ namespace StatTracker.Patches
                 }
                 else if (ConfigManager.Debug)
                     APILogger.Debug(Module.Name, $"[Prefix] Sentry name was null, this should not happen.");
-            }
-            else if (ConfigManager.Debug)
-                APILogger.Debug(Module.Name, $"[Prefix] Unable to find source agent.");
-        }
 
-        // Postfix to handle limb break
-        [HarmonyPatch(typeof(Dam_EnemyDamageBase), nameof(Dam_EnemyDamageBase.ReceiveBulletDamage))]
-        [HarmonyPostfix]
-        public static void Postfix_BulletDamage(Dam_EnemyDamageBase __instance, pBulletDamageData data)
-        {
-            if (!SNetwork.SNet.IsMaster) return;
-            if (!limbBroke) return;
+                // Get limb data
+                if (!limbBroke) return;
 
-            // Get damage data
-            Agent sourceAgent;
-            if (data.source.TryGet(out sourceAgent))
-            {
-                PlayerAgent? p = sourceAgent.TryCast<PlayerAgent>();
-                if (p == null) // Check damage was done by a player
-                {
-                    if (ConfigManager.Debug) APILogger.Debug(Module.Name, $"[Postfix] Could not find PlayerAgent, damage was done by agent of type: {sourceAgent.m_type.ToString()}.");
-                    return;
-                }
-
-                // Get stats
-                PlayerStats stats;
-                HostTracker.GetPlayer(p, out stats);
-
-                // Get enemy data
-                EnemyAgent owner = __instance.Owner;
-                EnemyData eData;
-                HostTracker.GetEnemyData(owner, out eData);
-                LimbData lData;
-                if (data.limbID > 0)
+                if (data.limbID >= 0)
                     lData = eData.limbData[__instance.DamageLimbs[data.limbID].name];
                 else return;
 
@@ -429,7 +397,7 @@ namespace StatTracker.Patches
                         APILogger.Debug(Module.Name, $"[Postfix] lData.breaker was null, this should not happen.");
             }
             else if (ConfigManager.Debug)
-                APILogger.Debug(Module.Name, $"[Postfix] Unable to find source agent.");
+                APILogger.Debug(Module.Name, $"[Prefix] Unable to find source agent.");
 
             // Reset limb destruction
             limbBroke = false;
@@ -444,19 +412,23 @@ namespace StatTracker.Patches
             // Reset limb destruction
             limbBroke = false;
 
-            EnemyAgent owner = __instance.Owner;
+            oldHealth = __instance.Health;
+        }
+        [HarmonyPatch(typeof(Dam_EnemyDamageBase), nameof(Dam_EnemyDamageBase.ReceiveMeleeDamage))]
+        [HarmonyPostfix]
+        public static void Postfix_MeleeDamage(Dam_EnemyDamageBase __instance, pFullDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
 
-            float damage = AgentModifierManager.ApplyModifier(__instance.Owner, AgentModifier.MeleeResistance, data.damage.Get(__instance.HealthMax));
-            if (owner.Locomotion.CurrentStateEnum == ES_StateEnum.Hibernate)
-                damage *= data.sleeperMulti.Get(10f);
-            bool willDie = __instance.WillDamageKill(damage);
-            damage = Mathf.Min(damage, __instance.Health);
-            if (damage == 0) willDie = false; // Note(randomuserhi): If damage is 0, enemy is already dead.
+            EnemyAgent owner = __instance.Owner;
 
             // Record damage data
             Agent sourceAgent;
             if (data.source.TryGet(out sourceAgent))
             {
+                float damage = oldHealth - __instance.Health;
+                bool willDie = __instance.Health <= 0 && damage > 0;
+
                 PlayerAgent? p = sourceAgent.TryCast<PlayerAgent>();
                 if (p == null) // Check damage was done by a player
                 {
@@ -472,7 +444,7 @@ namespace StatTracker.Patches
                 EnemyData eData;
                 HostTracker.GetEnemyData(owner, out eData);
                 LimbData lData;
-                if (data.limbID > 0)
+                if (data.limbID >= 0)
                     lData = eData.limbData[__instance.DamageLimbs[data.limbID].name];
                 else
                     lData = eData.limbData["unknown"];
@@ -504,6 +476,7 @@ namespace StatTracker.Patches
                         eData.alive = false;
                         eData.killer = stats.playerID;
                         eData.killerGear = weapon.name;
+                        eData.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
 
                         if (ConfigManager.Debug)
                             APILogger.Debug(Module.Name, $"[Prefix] {weapon.name}: {weapon.enemiesKilled[enemyType]} {enemyType} killed");
@@ -511,42 +484,8 @@ namespace StatTracker.Patches
                 }
                 else if (ConfigManager.Debug)
                     APILogger.Debug(Module.Name, $"[Prefix] Currently equipped is not a melee weapon, this should not happen.\nIsWeapon: {currentEquipped.IsWeapon}\nCanReload: {currentEquipped.CanReload}");
-            }
-            else if (ConfigManager.Debug)
-                APILogger.Debug(Module.Name, $"[Prefix] Unable to find source agent.");
-        }
 
-        // Postfix to handle limb break
-        [HarmonyPatch(typeof(Dam_EnemyDamageBase), nameof(Dam_EnemyDamageBase.ReceiveMeleeDamage))]
-        [HarmonyPostfix]
-        public static void Postfix_MeleeDamage(Dam_EnemyDamageBase __instance, pFullDamageData data)
-        {
-            if (!SNetwork.SNet.IsMaster) return;
-            if (!limbBroke) return;
-
-            // Get damage data
-            Agent sourceAgent;
-            if (data.source.TryGet(out sourceAgent))
-            {
-                PlayerAgent? p = sourceAgent.TryCast<PlayerAgent>();
-                if (p == null) // Check damage was done by a player
-                {
-                    if (ConfigManager.Debug) APILogger.Debug(Module.Name, $"[Postfix] Could not find PlayerAgent, damage was done by agent of type: {sourceAgent.m_type.ToString()}.");
-                    return;
-                }
-
-                // Get stats
-                PlayerStats stats;
-                HostTracker.GetPlayer(p, out stats);
-
-                // Get enemy data
-                EnemyAgent owner = __instance.Owner;
-                EnemyData eData;
-                HostTracker.GetEnemyData(owner, out eData);
-                LimbData lData;
-                if (data.limbID > 0)
-                    lData = eData.limbData[__instance.DamageLimbs[data.limbID].name];
-                else return;
+                if (!limbBroke) return;
 
                 eData.health = __instance.Health;
 
@@ -558,7 +497,6 @@ namespace StatTracker.Patches
                 lData.breaker = stats.playerID;
 
                 // Get weapon used
-                ItemEquippable currentEquipped = p.Inventory.WieldedItem;
                 if (!currentEquipped.IsWeapon && !currentEquipped.CanReload)
                 {
                     // player stats
@@ -574,7 +512,7 @@ namespace StatTracker.Patches
                         APILogger.Debug(Module.Name, $"[Postfix] lData.breaker was null, this should not happen.");
             }
             else if (ConfigManager.Debug)
-                APILogger.Debug(Module.Name, $"[Postfix] Unable to find source agent.");
+                APILogger.Debug(Module.Name, $"[Prefix] Unable to find source agent.");
 
             // Reset limb destruction
             limbBroke = false;

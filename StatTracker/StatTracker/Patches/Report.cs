@@ -66,9 +66,9 @@ namespace StatTracker.Patches
             StringBuilder json = new StringBuilder();
 
             json.Append($"\"instanceID\":\"{enemy.instanceID}\",\"type\":\"{enemy.enemyType}\",\"alive\":{enemy.alive.ToString().ToLower()},");
-            if (enemy.killer != null && enemy.killerGear != null)
+            if (enemy.killer != null && enemy.killerGear != null && enemy.timestamp != null)
             {
-                json.Append($"\"killer\":\"{enemy.killer.Value}\",\"killerGear\":\"{enemy.killerGear}\",");
+                json.Append($"\"timestamp\":{enemy.timestamp.Value},\"killer\":\"{enemy.killer.Value}\",\"killerGear\":\"{enemy.killerGear}\",");
             }
             json.Append($"\"health\":{enemy.health},\"healthMax\":{enemy.healthMax},\"limbData\":{{{Serialize(enemy.limbData)}}}");
 
@@ -143,7 +143,7 @@ namespace StatTracker.Patches
                 string seperator = string.Empty;
                 foreach (PlayerStats player in HostTracker.players.Values)
                 {
-                    json.Append($"{seperator}{{\"playerID\":{player.playerID},\"name\":\"{player.playerName}\",\"weapons\":{{{Serialize(player.weapons)}}},\"tools\":{{{Serialize(player.tools)}}},\"damageTaken\":[{Serialize(player.damageTaken)}],\"packsUsed\":{{{Serialize(player.packsUsed)}}}}}");
+                    json.Append($"{seperator}{{\"playerID\":{player.playerID},\"name\":\"{player.playerName}\",\"isBot\":{player.isBot.ToString().ToLower()},\"healthMax\":{player.healthMax},\"weapons\":{{{Serialize(player.weapons)}}},\"tools\":{{{Serialize(player.tools)}}},\"damageTaken\":[{Serialize(player.damageTaken)}],\"packsUsed\":{{{Serialize(player.packsUsed)}}}}}");
                     seperator = ",";
                 }
                 json.Append($"]");

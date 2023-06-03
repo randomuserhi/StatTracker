@@ -47,6 +47,16 @@ namespace StatTracker
             if (!players.ContainsKey(id))
             {
                 stats = new PlayerStats(id, player.NickName, player.IsBot);
+                PlayerAgent? p = player.PlayerAgent.TryCast<PlayerAgent>();
+                if (p != null)
+                    stats.healthMax = p.Damage.HealthMax;
+                else if (ConfigManager.Debug)
+                    APILogger.Debug(Module.Name, $"No player agent found, this should not happen.");
+                PlayerBackpack backpack = PlayerBackpackManager.GetBackpack(player);
+                stats.weapons.Set(backpack.Slots[(int)InventorySlot.GearStandard].Instance.PublicName);
+                stats.weapons.Set(backpack.Slots[(int)InventorySlot.GearSpecial].Instance.PublicName);
+                stats.weapons.Set(backpack.Slots[(int)InventorySlot.GearMelee].Instance.PublicName);
+                stats.tools.Set(backpack.Slots[(int)InventorySlot.GearClass].Instance.PublicName);
                 players.Add(id, stats);
                 return false;
             }

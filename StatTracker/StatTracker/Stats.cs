@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Il2CppSystem.Data;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -33,6 +34,13 @@ namespace StatTracker
                     tracker[index] = value;
                 else tracker.Add(index, value); 
             }
+        }
+
+        public TValue Set(TKey key)
+        {
+            if (!tracker.ContainsKey(key))
+                tracker.Add(key, createDefault(key));
+            return tracker[key];
         }
     }
 
@@ -74,6 +82,7 @@ namespace StatTracker
         public readonly string enemyType;
 
         public bool alive = true;
+        public long? timestamp = null;
         public ulong? killer = null;
         public string? killerGear = null;
 
@@ -129,6 +138,7 @@ namespace StatTracker
         public readonly ulong playerID;
         public readonly string playerName = "";
         public readonly bool isBot = false;
+        public float healthMax;
 
         public PlayerStats(ulong id, string name, bool isBot)
         {
@@ -153,6 +163,7 @@ namespace StatTracker
         public StatTrack<string, int> packsUsed = new StatTrack<string, int>(delegate { return 0; });
 
         // TODO(randomuserhi)
+        // => time graph of health changing over time
         // => deaths and when and who killed you
         // => number of revives
         // => number of deaths

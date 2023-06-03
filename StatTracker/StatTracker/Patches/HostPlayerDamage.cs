@@ -11,6 +11,9 @@ namespace StatTracker.Patches
     [HarmonyPatch]
     public static class HostPlayerDamage
     {
+        // TODO(randomuserhi): Instead of recalculating damage, I should just use prefix to record prior __instance.Health then postfix to get the difference
+        // and record that as damage done.
+
         #region Keeping track of shooter projectiles
 
         private static EnemyAgent? currentShooter = null;
@@ -143,9 +146,20 @@ namespace StatTracker.Patches
 
         #endregion
 
+        private static float oldHealth = 0;
+
         [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveFallDamage))]
         [HarmonyPrefix]
-        public static void ReceiveFallDamage(Dam_PlayerDamageBase __instance, pMiniDamageData data)
+        public static void Prefix_ReceiveFallDamage(Dam_PlayerDamageBase __instance, pMiniDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+
+            oldHealth = __instance.Health;
+        }
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveFallDamage))]
+        [HarmonyPostfix]
+        public static void Postfix_ReceiveFallDamage(Dam_PlayerDamageBase __instance, pMiniDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
             if (!__instance.Owner.Alive || __instance.Health <= 0) return;
@@ -153,11 +167,13 @@ namespace StatTracker.Patches
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
 
+            float damage = oldHealth - __instance.Health;
+
             DamageEvent damageEvent = new DamageEvent();
 
             damageEvent.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
             damageEvent.type = DamageEvent.Type.FallDamage;
-            damageEvent.damage = data.damage.Get(__instance.HealthMax);
+            damageEvent.damage = damage;
             damageEvent.playerID = stats.playerID;
 
             stats.damageTaken.Add(damageEvent);
@@ -166,9 +182,19 @@ namespace StatTracker.Patches
                 APILogger.Debug(Module.Name, $"{__instance.Owner.PlayerName} took {damageEvent.damage} fall damage.");
         }
 
+
         [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveTentacleAttackDamage))]
         [HarmonyPrefix]
-        public static void ReceiveTentacleAttackDamage(Dam_PlayerDamageBase __instance, pMediumDamageData data)
+        public static void Prefix_ReceiveTentacleAttackDamage(Dam_PlayerDamageBase __instance, pMediumDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+
+            oldHealth = __instance.Health;
+        }
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveTentacleAttackDamage))]
+        [HarmonyPostfix]
+        public static void Postfix_ReceiveTentacleAttackDamage(Dam_PlayerDamageBase __instance, pMediumDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
             if (!__instance.Owner.Alive || __instance.Health <= 0) return;
@@ -176,7 +202,8 @@ namespace StatTracker.Patches
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
 
-            float damage = data.damage.Get(__instance.HealthMax);
+            float damage = oldHealth - __instance.Health;
+
             if (data.source.TryGet(out Agent sourceAgent))
             {
                 // Get enemy agent
@@ -208,7 +235,16 @@ namespace StatTracker.Patches
 
         [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveMeleeDamage))]
         [HarmonyPrefix]
-        public static void ReceiveMeleeDamage(Dam_PlayerDamageBase __instance, pFullDamageData data)
+        public static void Prefix_ReceiveMeleeDamage(Dam_PlayerDamageBase __instance, pFullDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+
+            oldHealth = __instance.Health;
+        }
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveMeleeDamage))]
+        [HarmonyPostfix]
+        public static void Postfix_ReceiveMeleeDamage(Dam_PlayerDamageBase __instance, pFullDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
             if (!__instance.Owner.Alive || __instance.Health <= 0) return;
@@ -216,7 +252,8 @@ namespace StatTracker.Patches
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
 
-            float damage = data.damage.Get(__instance.DamageMax);
+            float damage = oldHealth - __instance.Health;
+
             if (data.source.TryGet(out Agent sourceAgent))
             {
                 // Get enemy agent
@@ -248,7 +285,16 @@ namespace StatTracker.Patches
 
         [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveShooterProjectileDamage))]
         [HarmonyPrefix]
-        public static void ReceiveShooterProjectileDamage(Dam_PlayerDamageBase __instance, pMediumDamageData data)
+        public static void Prefix_ReceiveShooterProjectileDamage(Dam_PlayerDamageBase __instance, pMediumDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+
+            oldHealth = __instance.Health;
+        }
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveShooterProjectileDamage))]
+        [HarmonyPostfix]
+        public static void Postfix_ReceiveShooterProjectileDamage(Dam_PlayerDamageBase __instance, pMediumDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
             if (!__instance.Owner.Alive || __instance.Health <= 0) return;
@@ -256,7 +302,7 @@ namespace StatTracker.Patches
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
 
-            float damage = data.damage.Get(__instance.HealthMax);
+            float damage = oldHealth - __instance.Health;
 
             DamageEvent damageEvent = new DamageEvent();
             damageEvent.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
@@ -276,7 +322,7 @@ namespace StatTracker.Patches
                 HostTracker.GetEnemyData(e, out eData);
 
                 damage = AgentModifierManager.ApplyModifier(sourceAgent, AgentModifier.StandardWeaponDamage, damage);
-                
+
                 damageEvent.enemyInstanceID = eData.instanceID;
             }
 
@@ -292,7 +338,16 @@ namespace StatTracker.Patches
 
         [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveBulletDamage))]
         [HarmonyPrefix]
-        public static void ReceiveBulletDamage(Dam_PlayerDamageBase __instance, pBulletDamageData data)
+        public static void Prefix_ReceiveBulletDamage(Dam_PlayerDamageBase __instance, pBulletDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+
+            oldHealth = __instance.Health;
+        }
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveBulletDamage))]
+        [HarmonyPostfix]
+        public static void Postfix_ReceiveBulletDamage(Dam_PlayerDamageBase __instance, pBulletDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
             if (!__instance.Owner.Alive || __instance.Health <= 0) return;
@@ -300,7 +355,8 @@ namespace StatTracker.Patches
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
 
-            float damage = data.damage.Get(__instance.HealthMax);
+            float damage = oldHealth - __instance.Health;
+
             if (data.source.TryGet(out Agent sourceAgent))
             {
                 // Get player agent
@@ -343,7 +399,16 @@ namespace StatTracker.Patches
 
         [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveExplosionDamage))]
         [HarmonyPrefix]
-        public static void ReceiveExplosionDamage(Dam_PlayerDamageBase __instance, pExplosionDamageData data)
+        public static void Prefix_ReceiveExplosionDamage(Dam_PlayerDamageBase __instance, pExplosionDamageData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+
+            oldHealth = __instance.Health;
+        }
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveExplosionDamage))]
+        [HarmonyPostfix]
+        public static void Postfix_ReceiveExplosionDamage(Dam_PlayerDamageBase __instance, pExplosionDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
             if (!__instance.Owner.Alive || __instance.Health <= 0) return;
@@ -351,7 +416,8 @@ namespace StatTracker.Patches
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
 
-            float damage = data.damage.Get(__instance.HealthMax);
+            float damage = oldHealth - __instance.Health;
+
             if (HostDamage.currentMine != null)
             {
                 PlayerStats other;
