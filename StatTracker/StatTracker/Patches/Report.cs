@@ -111,6 +111,21 @@ namespace StatTracker.Patches
             return json.ToString();
         }
 
+        private static string Serialize(List<HealthEvent> track)
+        {
+            StringBuilder json = new StringBuilder();
+
+            string seperator = string.Empty;
+            foreach (HealthEvent e in track)
+            {
+                json.Append($"{seperator}{{\"timestamp\":{e.timestamp},\"value\":\"{e.value}\"");
+                json.Append($"}}");
+                seperator = ",";
+            }
+
+            return json.ToString();
+        }
+
         private static string Serialize(EnemyData enemy)
         {
             StringBuilder json = new StringBuilder();
@@ -201,7 +216,8 @@ namespace StatTracker.Patches
                     json.Append($"\"damageTaken\":[{Serialize(player.damageTaken)}],");
                     json.Append($"\"dodges\":[{Serialize(player.dodges)}],");
                     json.Append($"\"aliveStates\":[{Serialize(player.aliveStates)}],");
-                    json.Append($"\"packsUsed\":[{Serialize(player.packsUsed)}]");
+                    json.Append($"\"packsUsed\":[{Serialize(player.packsUsed)}],");
+                    json.Append($"\"health\":[{Serialize(player.health)}]");
                     json.Append($"}}");
                     seperator = ",";
                 }
