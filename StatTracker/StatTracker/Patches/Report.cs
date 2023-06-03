@@ -1,6 +1,7 @@
 ﻿using API;
 using HarmonyLib;
 using Il2CppSystem.Text;
+using Player;
 
 // TODO(randomuserhi): Fix exit expedition not creating save file
 
@@ -56,7 +57,7 @@ namespace StatTracker.Patches
                 json.Append($"{seperator}{{\"timestamp\":{e.timestamp},\"type\":\"{e.type}\",\"damage\":{e.damage},");
                 if (e.enemyInstanceID != null)
                     json.Append($"\"enemyInstanceID\":\"{e.enemyInstanceID.Value}\",");
-                json.Append($"\"playerID\":{e.playerID},\"gearName\":\"{e.gearName}\"}}");
+                json.Append($"\"playerID\":\"{e.playerID}\",\"gearName\":\"{e.gearName}\"}}");
                 seperator = ",";
             }
 
@@ -134,6 +135,10 @@ namespace StatTracker.Patches
             if (enemy.killer != null && enemy.killerGear != null && enemy.timestamp != null)
             {
                 json.Append($"\"timestamp\":{enemy.timestamp.Value},\"killer\":\"{enemy.killer.Value}\",\"killerGear\":\"{enemy.killerGear}\",");
+                if (enemy.mineInstance != null)
+                {
+                    json.Append($"\"mineInstance\":\"{enemy.mineInstance.Value}\",");
+                }
             }
             json.Append($"\"health\":{enemy.health},\"healthMax\":{enemy.healthMax},\"limbData\":{{{Serialize(enemy.limbData)}}}");
 
@@ -149,7 +154,35 @@ namespace StatTracker.Patches
             {
                 json.Append($"\"breaker\":\"{limb.breaker.Value}\",\"breakerGear\":\"{limb.breakerGear}\",");
             }
-            json.Append($"\"weapons\":{{{Serialize(limb.weapons)}}},\"tools\":{{{Serialize(limb.tools)}}}");
+            json.Append($"\"gears\":{{{Serialize(limb.gears)}}}");
+
+            return json.ToString();
+        }
+
+        private static string Serialize(StatTrack<ulong, LimbDamageData> track)
+        {
+            StringBuilder json = new StringBuilder();
+
+            string seperator = string.Empty;
+            foreach (ulong key in track.Keys)
+            {
+                json.Append($"{seperator}\"{key}\":{{{Serialize(track[key])}}}");
+                seperator = ",";
+            }
+
+            return json.ToString();
+        }
+
+        private static string Serialize(StatTrack<string, float> track)
+        {
+            StringBuilder json = new StringBuilder();
+
+            string seperator = string.Empty;
+            foreach (string key in track.Keys)
+            {
+                json.Append($"{seperator}\"{key}\":{track[key]}");
+                seperator = ",";
+            }
 
             return json.ToString();
         }
@@ -158,7 +191,7 @@ namespace StatTracker.Patches
         {
             StringBuilder json = new StringBuilder();
 
-            json.Append($"\"name\":\"{limb.name}\",\"damage\":{limb.damage}");
+            json.Append($"\"playerID\":\"{limb.playerID}\",\"gear\":{{{Serialize(limb.gear)}}}");
 
             return json.ToString();
         }
@@ -204,15 +237,27 @@ namespace StatTracker.Patches
             {
                 json.Append($"{{\"reportType\": \"HOST\",\"report\":{{");
 
-                json.Append($"\"players\":[");
+                json.Append($"\"active\":[");
                 string seperator = string.Empty;
+                foreach (PlayerAgent p in PlayerManager.PlayerAgentsInLevel)
+                {
+                    PlayerStats player;
+                    HostTracker.GetPlayer(p, out player);
+                    json.Append($"{seperator}{{\"playerID\":\"{player.playerID}\",");
+                    json.Append($"\"name\":\"{player.playerName}\",\"isBot\":{player.isBot.ToString().ToLower()}");
+                    json.Append($"}}");
+                    seperator = ",";
+                }
+                json.Append($"]");
+
+                json.Append($",\"players\":[");
+                seperator = string.Empty;
                 foreach (PlayerStats player in HostTracker.players.Values)
                 {
-                    json.Append($"{seperator}{{\"playerID\":{player.playerID},");
+                    json.Append($"{seperator}{{\"playerID\":\"{player.playerID}\",");
                     json.Append($"\"name\":\"{player.playerName}\",\"isBot\":{player.isBot.ToString().ToLower()},");
                     json.Append($"\"healthMax\":{player.healthMax},");
-                    json.Append($"\"weapons\":{{{Serialize(player.weapons)}}},");
-                    json.Append($"\"tools\":{{{Serialize(player.tools)}}},");
+                    json.Append($"\"gears\":{{{Serialize(player.gears)}}},");
                     json.Append($"\"damageTaken\":[{Serialize(player.damageTaken)}],");
                     json.Append($"\"dodges\":[{Serialize(player.dodges)}],");
                     json.Append($"\"aliveStates\":[{Serialize(player.aliveStates)}],");

@@ -432,7 +432,7 @@ namespace StatTracker.Patches
                 DamageEvent damageEvent = new DamageEvent();
 
                 damageEvent.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
-                damageEvent.type = DamageEvent.Type.PlayerBullet;
+                damageEvent.type = DamageEvent.Type.PlayerExplosive;
                 damageEvent.damage = damage;
                 damageEvent.playerID = other.playerID;
                 damageEvent.gearName = HostDamage.currentMine.name;

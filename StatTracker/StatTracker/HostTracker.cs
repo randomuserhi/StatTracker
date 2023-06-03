@@ -66,10 +66,10 @@ namespace StatTracker
                 else if (ConfigManager.Debug)
                     APILogger.Debug(Module.Name, $"No player agent found, this should not happen.");
                 PlayerBackpack backpack = PlayerBackpackManager.GetBackpack(player);
-                stats.weapons.Set(backpack.Slots[(int)InventorySlot.GearStandard].Instance.PublicName);
-                stats.weapons.Set(backpack.Slots[(int)InventorySlot.GearSpecial].Instance.PublicName);
-                stats.weapons.Set(backpack.Slots[(int)InventorySlot.GearMelee].Instance.PublicName);
-                stats.tools.Set(backpack.Slots[(int)InventorySlot.GearClass].Instance.PublicName);
+                stats.gears.Set(backpack.Slots[(int)InventorySlot.GearStandard].Instance.PublicName);
+                stats.gears.Set(backpack.Slots[(int)InventorySlot.GearSpecial].Instance.PublicName);
+                stats.gears.Set(backpack.Slots[(int)InventorySlot.GearMelee].Instance.PublicName);
+                stats.gears.Set(backpack.Slots[(int)InventorySlot.GearClass].Instance.PublicName);
                 players.Add(id, stats);
                 return false;
             }

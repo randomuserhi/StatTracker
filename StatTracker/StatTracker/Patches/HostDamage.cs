@@ -4,9 +4,6 @@ using CharacterDestruction;
 using Enemies;
 using HarmonyLib;
 using Player;
-using UnityEngine;
-using static GameData.GD;
-using static PlayfabMatchmakingManager.MatchResult;
 
 namespace StatTracker.Patches
 {
@@ -27,6 +24,13 @@ namespace StatTracker.Patches
             if (!doDamage) return;
 
             sentryName = __instance.ArchetypeData.PublicName;
+            var instance = __instance.GetComponent<SentryGunInstance>();
+            if (instance != null)
+            {
+                sentryName = instance.PublicName;
+            }
+            else if (ConfigManager.Debug)
+                APILogger.Debug(Module.Name, $"Could not find sentry gun instance, this should not happen.");
             sentryShot = true;
         }
         [HarmonyPatch(typeof(SentryGunInstance_Firing_Bullets), nameof(SentryGunInstance_Firing_Bullets.FireBullet))]
@@ -81,11 +85,13 @@ namespace StatTracker.Patches
         public class Mine
         {
             public string name;
-            public SNetwork.SNet_Player owner;   
-            public Mine(SNetwork.SNet_Player owner, string name)
+            public SNetwork.SNet_Player owner;
+            public int instanceID;
+            public Mine(SNetwork.SNet_Player owner, string name, int instanceID)
             {
                 this.owner = owner;
                 this.name = name;
+                this.instanceID = instanceID;
             }
         }
         public static Dictionary<int, Mine> mines = new Dictionary<int, Mine>();
@@ -108,10 +114,10 @@ namespace StatTracker.Patches
                 switch (spawnData.itemData.itemID_gearCRC)
                 {
                     case 125: // Mine deployer mine
-                        mines.Add(instanceID, new Mine(player, "Krieger O4"));
+                        mines.Add(instanceID, new Mine(player, "Krieger O4", instanceID));
                         break;
                     case 139: // Consumable mine
-                        mines.Add(instanceID, new Mine(player, "Consumable Mine"));
+                        mines.Add(instanceID, new Mine(player, "Consumable Mine", instanceID));
                         break;
                     /*144: // Cfoam mine
                         break;*/
@@ -197,7 +203,7 @@ namespace StatTracker.Patches
                 string enemyType = eData.enemyType;
 
                 // player stats
-                GearData mine = stats.tools[currentMine.name];
+                GearData mine = stats.gears[currentMine.name];
                 mine.damage += damage;
 
                 if (ConfigManager.Debug)
@@ -214,6 +220,7 @@ namespace StatTracker.Patches
                     eData.alive = false;
                     eData.killer = stats.playerID;
                     eData.killerGear = mine.name;
+                    eData.mineInstance = currentMine.instanceID;
                     eData.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
 
                     if (ConfigManager.Debug)
@@ -239,6 +246,7 @@ namespace StatTracker.Patches
 
                 // player stats
                 lData.breakerGear = currentMine.name;
+                lData.gears[stats.playerID].gear[currentMine.name] += damage;
 
                 if (ConfigManager.Debug)
                     if (lData.breaker != null)
@@ -307,11 +315,11 @@ namespace StatTracker.Patches
                     if (currentEquipped.IsWeapon && currentEquipped.CanReload)
                     {
                         // player stats
-                        GearData weapon = stats.weapons[currentEquipped.PublicName];
+                        GearData weapon = stats.gears[currentEquipped.PublicName];
                         weapon.damage += damage;
 
                         // enemy stats
-                        lData.weapons[weapon.name].damage += damage;
+                        lData.gears[stats.playerID].gear[weapon.name] += damage;
 
                         if (ConfigManager.Debug)
                         {
@@ -339,11 +347,11 @@ namespace StatTracker.Patches
                 else if (sentryName != null) // Damage done by sentry
                 {
                     // player stats
-                    GearData sentry = stats.tools[sentryName];
+                    GearData sentry = stats.gears[sentryName];
                     sentry.damage += damage;
 
                     // enemy stats
-                    lData.tools[sentry.name].damage += damage;
+                    lData.gears[stats.playerID].gear[sentry.name] += damage;
 
                     if (ConfigManager.Debug)
                     {
@@ -470,11 +478,11 @@ namespace StatTracker.Patches
                 if (!currentEquipped.IsWeapon && !currentEquipped.CanReload)
                 {
                     // player stats
-                    GearData weapon = stats.weapons[currentEquipped.PublicName];
+                    GearData weapon = stats.gears[currentEquipped.PublicName];
                     weapon.damage += damage;
 
                     // enemy stats
-                    lData.weapons[weapon.name].damage += damage;
+                    lData.gears[stats.playerID].gear[weapon.name] += damage;
 
                     if (ConfigManager.Debug)
                     {

@@ -46,12 +46,12 @@ namespace StatTracker
 
     public class LimbDamageData
     {
-        public readonly string name;
-        public float damage;
+        public readonly ulong playerID;
+        public StatTrack<string, float> gear = new StatTrack<string, float>(delegate (string name) { return 0; });
 
-        public LimbDamageData(string name)
+        public LimbDamageData(ulong playerID)
         {
-            this.name = name;
+            this.playerID = playerID;
         }
     }
 
@@ -62,13 +62,7 @@ namespace StatTracker
         public ulong? breaker = null;
         public string? breakerGear = null;
 
-        // Dictionary of "Weapon Public Name" => damage the weapon did
-        // => includes melee damage
-        public StatTrack<string, LimbDamageData> weapons = new StatTrack<string, LimbDamageData>(delegate (string name) { return new LimbDamageData(name); });
-
-        // Dictionary of "Tool Public Name" => damage the tool did
-        // => includes consumables as tool (consumable mine should show up here as well)
-        public StatTrack<string, LimbDamageData> tools = new StatTrack<string, LimbDamageData>(delegate (string name) { return new LimbDamageData(name); });
+        public StatTrack<ulong, LimbDamageData> gears = new StatTrack<ulong, LimbDamageData>(delegate (ulong id) { return new LimbDamageData(id); });
 
         public LimbData(string name)
         {
@@ -85,6 +79,7 @@ namespace StatTracker
         public long? timestamp = null;
         public ulong? killer = null;
         public string? killerGear = null;
+        public int? mineInstance = null;
 
         public float health;
         public float healthMax;
@@ -119,7 +114,8 @@ namespace StatTracker
             Melee,
             ShooterPellet,
             Mine,
-            PlayerBullet
+            PlayerBullet,
+            PlayerExplosive
         }
 
         public Type type;
@@ -195,13 +191,9 @@ namespace StatTracker
             this.isBot = isBot;
         }
 
-        // Dictionary of "Weapon Public Name" => damage the weapon did
+        // Dictionary of "gear Public Name" => damage the gear did
         // => includes melee damage
-        public StatTrack<string, GearData> weapons = new StatTrack<string, GearData>(delegate (string name) { return new GearData(name); });
-
-        // Dictionary of "Tool Public Name" => damage the tool did
-        // => includes consumables as tool (consumable mine should show up here as well)
-        public StatTrack<string, GearData> tools = new StatTrack<string, GearData>(delegate (string name) { return new GearData(name); });
+        public StatTrack<string, GearData> gears = new StatTrack<string, GearData>(delegate (string name) { return new GearData(name); });
 
         // List of damage events
         public List<DamageEvent> damageTaken = new List<DamageEvent>();
