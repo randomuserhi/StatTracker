@@ -2,6 +2,8 @@
 using HarmonyLib;
 using Il2CppSystem.Text;
 
+// TODO(randomuserhi): Fix exit expedition not creating save file
+
 namespace StatTracker.Patches
 {
     [HarmonyPatch]
@@ -174,9 +176,9 @@ namespace StatTracker.Patches
             return json.ToString();
         }
 
-        [HarmonyPatch(typeof(RundownManager), nameof(RundownManager.OnExpeditionEnded))]
+        [HarmonyPatch(typeof(RundownManager), nameof(RundownManager.EndGameSession))]
         [HarmonyPrefix]
-        public static void OnExpeditionEnd(ExpeditionEndState endState)
+        public static void EndGameSession()
         {
             APILogger.Debug(Module.Name, $"Expedition ended, saving report.");
 
