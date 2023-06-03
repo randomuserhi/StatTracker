@@ -35,8 +35,10 @@ public class Plugin : BasePlugin
 
         APILogger.Debug(Module.Name, "Debug is " + (ConfigManager.Debug ? "Enabled" : "Disabled"));
 
-        RundownManager.add_OnExpeditionGameplayStarted((Action)ClientTracker.OnRundownStart);
         RundownManager.add_OnExpeditionGameplayStarted((Action)HostTracker.OnRundownStart);
+#if CLIENT
+        RundownManager.add_OnExpeditionGameplayStarted((Action)ClientTracker.OnRundownStart);
+#endif
     }
 
     private static Harmony? harmony;

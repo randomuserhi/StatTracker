@@ -9,6 +9,8 @@ using UnityEngine;
 //                     Since not all stats are trackable without host, this provides limited data about your own
 //                     performance.
 
+#if CLIENT
+
 namespace StatTracker.Patches
 {
     [HarmonyPatch]
@@ -172,3 +174,5 @@ namespace StatTracker.Patches
         }
     }
 }
+
+#endif

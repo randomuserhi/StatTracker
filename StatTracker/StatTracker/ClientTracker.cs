@@ -5,6 +5,8 @@ using Player;
 using UnityEngine;
 using Gear;
 
+#if CLIENT
+
 namespace StatTracker
 {
     // refers to data recorded locally which is just an estimate and lacks information, like sentry damage etc...
@@ -79,3 +81,5 @@ namespace StatTracker
         }
     }
 }
+
+#endif

@@ -11,9 +11,6 @@ namespace StatTracker.Patches
     [HarmonyPatch]
     public static class HostPlayerDamage
     {
-        // TODO(randomuserhi): Instead of recalculating damage, I should just use prefix to record prior __instance.Health then postfix to get the difference
-        // and record that as damage done.
-
         #region Keeping track of shooter projectiles
 
         private static EnemyAgent? currentShooter = null;
