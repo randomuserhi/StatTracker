@@ -132,6 +132,54 @@ namespace StatTracker
         public string gearName; // name of gear if player did damage to you (sentry, gun name, mine deployer, consumable mine etc...) 
     }
 
+    public struct DodgeEvent
+    {
+        public enum Type
+        {
+            Tongue
+        }
+
+        public Type type;
+        public long timestamp;
+
+        public int enemyInstanceID;
+    }
+
+    public struct HealthEvent
+    {
+        public long timestamp;
+        public float value;
+    }
+
+    public struct AliveStateEvent
+    {
+        public enum Type
+        {
+            Down,
+            Revive
+        }
+
+        public Type type;
+        public long timestamp;
+
+        // Player that revived you
+        public ulong? playerID;
+    }
+
+    public struct PackUse
+    {
+        public enum Type
+        {
+            Health,
+            Ammo,
+            Tool
+        }
+
+        public Type type;
+        public long timestamp;
+        public ulong? playerID;
+    }
+
     public class PlayerStats
     {
         // Player the stats belong to
@@ -158,19 +206,20 @@ namespace StatTracker
         // List of damage events
         public List<DamageEvent> damageTaken = new List<DamageEvent>();
 
-        // TODO(randomuserhi)
+        // List of dodge events
+        public List<DodgeEvent> dodges = new List<DodgeEvent>();
+
+        // List of health events
+        public List<HealthEvent> health = new List<HealthEvent>();
+
+        // List of down and revive events
+        public List<AliveStateEvent> aliveStates = new List<AliveStateEvent>();
+
         // Dictionary of "Pack Public Name" => number of times used on this player
-        public StatTrack<string, int> packsUsed = new StatTrack<string, int>(delegate { return 0; });
+        public List<PackUse> packsUsed = new List<PackUse>();
 
         // TODO(randomuserhi)
-        // => time graph of health changing over time
-        // => deaths and when and who killed you
-        // => number of revives
-        // => number of deaths
-        // => enemy tongues dodged
-        // => snatches dodged
+        // => snatchers dodged
         // => players saved from tongues
-        // => damage dealt to other players (and who)
-        // => packs given to other players (and who)
     }
 }

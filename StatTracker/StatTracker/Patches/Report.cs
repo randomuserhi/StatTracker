@@ -61,6 +61,54 @@ namespace StatTracker.Patches
             return json.ToString();
         }
 
+        private static string Serialize(List<DodgeEvent> track)
+        {
+            StringBuilder json = new StringBuilder();
+
+            string seperator = string.Empty;
+            foreach (DodgeEvent e in track)
+            {
+                json.Append($"{seperator}{{\"timestamp\":{e.timestamp},\"type\":\"{e.type}\",\"enemyInstanceID\":\"{e.enemyInstanceID}\"}}");
+                seperator = ",";
+            }
+
+            return json.ToString();
+        }
+
+        private static string Serialize(List<AliveStateEvent> track)
+        {
+            StringBuilder json = new StringBuilder();
+
+            string seperator = string.Empty;
+            foreach (AliveStateEvent e in track)
+            {
+                json.Append($"{seperator}{{\"timestamp\":{e.timestamp},\"type\":\"{e.type}\"");
+                if (e.playerID != null)
+                    json.Append($",\"playerID\":\"{e.playerID.Value}\"");
+                json.Append($"}}");
+                seperator = ",";
+            }
+
+            return json.ToString();
+        }
+
+        private static string Serialize(List<PackUse> track)
+        {
+            StringBuilder json = new StringBuilder();
+
+            string seperator = string.Empty;
+            foreach (PackUse e in track)
+            {
+                json.Append($"{seperator}{{\"timestamp\":{e.timestamp},\"type\":\"{e.type}\"");
+                if (e.playerID != null)
+                    json.Append($",\"playerID\":\"{e.playerID.Value}\"");
+                json.Append($"}}");
+                seperator = ",";
+            }
+
+            return json.ToString();
+        }
+
         private static string Serialize(EnemyData enemy)
         {
             StringBuilder json = new StringBuilder();
@@ -143,7 +191,16 @@ namespace StatTracker.Patches
                 string seperator = string.Empty;
                 foreach (PlayerStats player in HostTracker.players.Values)
                 {
-                    json.Append($"{seperator}{{\"playerID\":{player.playerID},\"name\":\"{player.playerName}\",\"isBot\":{player.isBot.ToString().ToLower()},\"healthMax\":{player.healthMax},\"weapons\":{{{Serialize(player.weapons)}}},\"tools\":{{{Serialize(player.tools)}}},\"damageTaken\":[{Serialize(player.damageTaken)}],\"packsUsed\":{{{Serialize(player.packsUsed)}}}}}");
+                    json.Append($"{seperator}{{\"playerID\":{player.playerID},");
+                    json.Append($"\"name\":\"{player.playerName}\",\"isBot\":{player.isBot.ToString().ToLower()},");
+                    json.Append($"\"healthMax\":{player.healthMax},");
+                    json.Append($"\"weapons\":{{{Serialize(player.weapons)}}},");
+                    json.Append($"\"tools\":{{{Serialize(player.tools)}}},");
+                    json.Append($"\"damageTaken\":[{Serialize(player.damageTaken)}],");
+                    json.Append($"\"dodges\":[{Serialize(player.dodges)}],");
+                    json.Append($"\"aliveStates\":[{Serialize(player.aliveStates)}],");
+                    json.Append($"\"packsUsed\":[{Serialize(player.packsUsed)}]");
+                    json.Append($"}}");
                     seperator = ",";
                 }
                 json.Append($"]");

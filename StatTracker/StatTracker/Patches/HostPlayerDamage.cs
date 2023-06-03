@@ -5,6 +5,8 @@ using Player;
 using Enemies;
 using UnityEngine;
 using SNetwork;
+using static Agents.AgentReplicatedActions;
+using GameData;
 
 namespace StatTracker.Patches
 {
@@ -144,13 +146,15 @@ namespace StatTracker.Patches
         #endregion
 
         private static float oldHealth = 0;
+        private static bool wasAlive = false;
 
         [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveFallDamage))]
         [HarmonyPrefix]
         public static void Prefix_ReceiveFallDamage(Dam_PlayerDamageBase __instance, pMiniDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            wasAlive = __instance.Owner.Alive && __instance.Health > 0;
+            if (!wasAlive) return;
 
             oldHealth = __instance.Health;
         }
@@ -159,7 +163,7 @@ namespace StatTracker.Patches
         public static void Postfix_ReceiveFallDamage(Dam_PlayerDamageBase __instance, pMiniDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            if (!wasAlive) return;
 
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
@@ -185,7 +189,8 @@ namespace StatTracker.Patches
         public static void Prefix_ReceiveTentacleAttackDamage(Dam_PlayerDamageBase __instance, pMediumDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            wasAlive = __instance.Owner.Alive && __instance.Health > 0;
+            if (!wasAlive) return;
 
             oldHealth = __instance.Health;
         }
@@ -194,7 +199,7 @@ namespace StatTracker.Patches
         public static void Postfix_ReceiveTentacleAttackDamage(Dam_PlayerDamageBase __instance, pMediumDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            if (!wasAlive) return;
 
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
@@ -235,7 +240,8 @@ namespace StatTracker.Patches
         public static void Prefix_ReceiveMeleeDamage(Dam_PlayerDamageBase __instance, pFullDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            wasAlive = __instance.Owner.Alive && __instance.Health > 0;
+            if (!wasAlive) return;
 
             oldHealth = __instance.Health;
         }
@@ -244,7 +250,7 @@ namespace StatTracker.Patches
         public static void Postfix_ReceiveMeleeDamage(Dam_PlayerDamageBase __instance, pFullDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            if (!wasAlive) return;
 
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
@@ -285,7 +291,8 @@ namespace StatTracker.Patches
         public static void Prefix_ReceiveShooterProjectileDamage(Dam_PlayerDamageBase __instance, pMediumDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            wasAlive = __instance.Owner.Alive && __instance.Health > 0;
+            if (!wasAlive) return;
 
             oldHealth = __instance.Health;
         }
@@ -294,7 +301,7 @@ namespace StatTracker.Patches
         public static void Postfix_ReceiveShooterProjectileDamage(Dam_PlayerDamageBase __instance, pMediumDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            if (!wasAlive) return;
 
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
@@ -338,7 +345,8 @@ namespace StatTracker.Patches
         public static void Prefix_ReceiveBulletDamage(Dam_PlayerDamageBase __instance, pBulletDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            wasAlive = __instance.Owner.Alive && __instance.Health > 0;
+            if (!wasAlive) return;
 
             oldHealth = __instance.Health;
         }
@@ -347,7 +355,7 @@ namespace StatTracker.Patches
         public static void Postfix_ReceiveBulletDamage(Dam_PlayerDamageBase __instance, pBulletDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            if (!wasAlive) return;
 
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
@@ -399,7 +407,8 @@ namespace StatTracker.Patches
         public static void Prefix_ReceiveExplosionDamage(Dam_PlayerDamageBase __instance, pExplosionDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            wasAlive = __instance.Owner.Alive && __instance.Health > 0;
+            if (!wasAlive) return;
 
             oldHealth = __instance.Health;
         }
@@ -408,7 +417,7 @@ namespace StatTracker.Patches
         public static void Postfix_ReceiveExplosionDamage(Dam_PlayerDamageBase __instance, pExplosionDamageData data)
         {
             if (!SNetwork.SNet.IsMaster) return;
-            if (!__instance.Owner.Alive || __instance.Health <= 0) return;
+            if (!wasAlive) return;
 
             PlayerStats stats;
             HostTracker.GetPlayer(__instance.Owner, out stats);
@@ -434,5 +443,204 @@ namespace StatTracker.Patches
                     APILogger.Debug(Module.Name, $"{__instance.Owner.PlayerName} took {damageEvent.damage} explosive damage from {other.playerName} [{damageEvent.gearName}].");
             }
         }
+
+        #region Tracking Packs
+
+        // TODO(randomuserhi): Figure out how to find out who gave ammo to who
+        [HarmonyPatch(typeof(PlayerBackpackManager), nameof(PlayerBackpackManager.ReceiveAmmoGive))]
+        [HarmonyPostfix]
+        public static void ReceiveAmmoGive(pAmmoGive data)
+        {
+            SNet_Player player;
+            if (data.targetPlayer.TryGetPlayer(out player))
+            {
+                PlayerDataBlock block = GameDataBlockBase<PlayerDataBlock>.GetBlock(1u);
+                float standardAmount = data.ammoStandardRel * (float)block.AmmoStandardResourcePackMaxCap;
+                float specialAmount = data.ammoSpecialRel * (float)block.AmmoSpecialResourcePackMaxCap;
+                float toolAmount = data.ammoClassRel * (float)block.AmmoClassResourcePackMaxCap;
+
+                PlayerStats stats;
+                HostTracker.GetPlayer(player, out stats);
+
+                PackUse pack = new PackUse();
+                pack.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
+                pack.playerID = null;
+                if (standardAmount > 0 && specialAmount > 0)  
+                    pack.type = PackUse.Type.Ammo;
+                else if (toolAmount > 0)
+                    pack.type = PackUse.Type.Tool;
+
+                stats.packsUsed.Add(pack);
+
+                if (ConfigManager.Debug)
+                    APILogger.Debug(Module.Name, $"{stats.playerName} used {pack.type} pack.");
+            }
+        }
+
+        private static float oldHealthHealing = 0;
+
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveAddHealth))]
+        [HarmonyPrefix]
+        public static void Prefix_ReceiveAddHealth(Dam_PlayerDamageBase __instance)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+
+            oldHealthHealing = __instance.Health;
+        }
+
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveAddHealth))]
+        [HarmonyPostfix]
+        public static void Postfix_ReceiveAddHealth(Dam_PlayerDamageBase __instance, pAddHealthData data)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+
+            PlayerStats self;
+            HostTracker.GetPlayer(__instance.Owner, out self);
+
+            float healing = __instance.Health - oldHealthHealing;
+            if (healing > 0)
+            {
+                Agent a;
+                if (data.source.TryGet(out a))
+                {
+                    PlayerAgent? p = a.TryCast<PlayerAgent>();
+                    if (p != null)
+                    {
+                        PlayerStats source;
+                        HostTracker.GetPlayer(p, out source);
+
+                        PackUse pack = new PackUse();
+                        pack.type = PackUse.Type.Health;
+                        pack.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
+                        pack.playerID = source.playerID;
+
+                        self.packsUsed.Add(pack);
+
+                        if (ConfigManager.Debug)
+                            APILogger.Debug(Module.Name, $"{self.playerName} was healed by {source.playerName}");
+                    }
+                }
+            }
+
+            long timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
+
+            HealthEvent healthEvent = new HealthEvent();
+            healthEvent.timestamp = timestamp;
+            healthEvent.value = __instance.Health;
+
+            self.health.Add(healthEvent);
+        }
+
+        #endregion
+
+        #region Tracking revives
+
+        [HarmonyPatch(typeof(AgentReplicatedActions), nameof(AgentReplicatedActions.DoPlayerRevive))]
+        [HarmonyPostfix]
+        public static void DoPlayerRevive(pPlayerReviveAction data)
+        {
+            if (data.TargetPlayer.TryGet(out PlayerAgent t) && !t.Alive)
+            {
+                if (data.SourcePlayer.TryGet(out PlayerAgent s))
+                {
+                    PlayerStats target;
+                    HostTracker.GetPlayer(t, out target);
+                    PlayerStats source;
+                    HostTracker.GetPlayer(s, out source);
+
+                    long timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
+
+                    AliveStateEvent aliveStateEvent = new AliveStateEvent();
+                    aliveStateEvent.timestamp = timestamp;
+                    aliveStateEvent.type = AliveStateEvent.Type.Revive;
+                    aliveStateEvent.playerID = source.playerID;
+
+                    target.aliveStates.Add(aliveStateEvent);
+
+                    if (ConfigManager.Debug)
+                        APILogger.Debug(Module.Name, $"{target.playerName} was revived by {source.playerName}");
+                }
+                else if (ConfigManager.Debug)
+                    APILogger.Debug(Module.Name, $"Unable to get source player, this should not happen.");
+            }
+        }
+
+        #endregion
+
+        #region Tracking Health
+
+        [HarmonyPatch(typeof(Dam_SyncedDamageBase), nameof(Dam_SyncedDamageBase.RegisterDamage))]
+        [HarmonyPostfix]
+        public static void RegisterDamage(Dam_SyncedDamageBase __instance)
+        {
+            Dam_PlayerDamageBase? player = __instance.TryCast<Dam_PlayerDamageBase>();
+            if (player == null) return;
+
+            PlayerStats stats;
+            HostTracker.GetPlayer(player.Owner, out stats);
+
+            long timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
+
+            HealthEvent healthEvent = new HealthEvent();
+            healthEvent.timestamp = timestamp;
+            healthEvent.value = __instance.Health;
+
+            stats.health.Add(healthEvent);
+
+            if (healthEvent.value <= 0 && (stats.aliveStates.Count == 0 || stats.aliveStates.Last().type != AliveStateEvent.Type.Down))
+            {
+                AliveStateEvent aliveStateEvent = new AliveStateEvent();
+                aliveStateEvent.timestamp = timestamp;
+                aliveStateEvent.type = AliveStateEvent.Type.Down;
+                aliveStateEvent.playerID = null;
+
+                stats.aliveStates.Add(aliveStateEvent);
+            }
+        }
+
+        #endregion
+
+        #region Tracking dodges
+
+        [HarmonyPatch(typeof(MovingEnemyTentacleBase), nameof(MovingEnemyTentacleBase.OnAttackIsOut))]
+        [HarmonyPrefix]
+        public static void OnAttackIsOut(MovingEnemyTentacleBase __instance)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+
+            PlayerAgent? target = __instance.PlayerTarget;
+
+            bool flag = __instance.CheckTargetInAttackTunnel();
+            if (SNet.IsMaster && target != null && target.Damage.IsSetup)
+            {
+                bool flag2;
+                if (__instance.m_owner.EnemyBalancingData.UseTentacleTunnelCheck)
+                {
+                    flag2 = flag;
+                }
+                else
+                {
+                    Vector3 tipPos = __instance.GetTipPos();
+                    flag2 = (target.TentacleTarget.position - tipPos).magnitude < __instance.m_owner.EnemyBalancingData.TentacleAttackDamageRadiusIfNoTunnelCheck;
+                }
+                if (!flag2)
+                {
+                    PlayerStats stats;
+                    HostTracker.GetPlayer(target, out stats);
+
+                    DodgeEvent dodgeEvent = new DodgeEvent();
+                    dodgeEvent.type = DodgeEvent.Type.Tongue;
+                    dodgeEvent.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
+                    dodgeEvent.enemyInstanceID = __instance.m_owner.GetInstanceID();
+
+                    stats.dodges.Add(dodgeEvent);
+                    
+                    if (ConfigManager.Debug)
+                        APILogger.Debug(Module.Name, $"{target.PlayerName} dodged tongue from [{dodgeEvent.enemyInstanceID}]");
+                }
+            }
+        }
+
+        #endregion
     }
 }

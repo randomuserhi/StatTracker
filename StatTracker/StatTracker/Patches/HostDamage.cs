@@ -6,6 +6,7 @@ using HarmonyLib;
 using Player;
 using UnityEngine;
 using static GameData.GD;
+using static PlayfabMatchmakingManager.MatchResult;
 
 namespace StatTracker.Patches
 {
@@ -116,6 +117,19 @@ namespace StatTracker.Patches
                         break;*/
                 }
             }
+        }
+
+        // NOTE(randomuserhi) => has a agent parameter to know who picked up the mine, may use in the future
+        [HarmonyPatch(typeof(MineDeployerInstance), nameof(MineDeployerInstance.SyncedPickup))]
+        [HarmonyPrefix]
+        public static void SyncedPickup(MineDeployerInstance __instance)
+        {
+            int instanceID = __instance.gameObject.GetInstanceID();
+
+            mines.Remove(instanceID);
+
+            if (ConfigManager.Debug)
+                APILogger.Debug(Module.Name, $"Mine instance [{instanceID}] was picked up.");
         }
 
         [HarmonyPatch(typeof(MineDeployerInstance_Detonate_Explosive), nameof(MineDeployerInstance_Detonate_Explosive.DoExplode))]
