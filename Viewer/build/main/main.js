@@ -22,10 +22,12 @@ RHU.import(RHU.module({ trace: new Error(),
                     reader.onload = (event) => {
                         if (RHU.exists(event.target)) {
                             let json = JSON.parse(event.target.result)[0];
-                            if (!RHU.exists(self.report)) {
-                                self.report = document.createMacro("report");
-                                self.append(self.report);
-                            }
+                            let report = document.createMacro("report");
+                            if (RHU.exists(self.report))
+                                self.report.replaceWith(report);
+                            else
+                                self.append(report);
+                            self.report = report;
                             self.report.open(new GTFOReport(json.reportType, json.report));
                             self.report.scrollIntoView({ behavior: "smooth" });
                         }

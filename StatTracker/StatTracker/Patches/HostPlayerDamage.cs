@@ -51,6 +51,8 @@ namespace StatTracker.Patches
         [HarmonyPrefix]
         public static bool DoFireTargeting(ProjectileManager __instance, ProjectileManager.pFireTargeting data)
         {
+            if (!SNetwork.SNet.IsMaster) return true;
+
             Agent? comp = null;
             data.target.TryGet(out comp);
             GameObject projectile = ProjectileManager.SpawnProjectileType(data.type, data.position, Quaternion.LookRotation(data.forward));
@@ -62,22 +64,6 @@ namespace StatTracker.Patches
 
             if (currentShooter != null)
                 projectileOwners.Add(projectile.GetInstanceID(), currentShooter);
-            else if (!SNet.IsMaster)
-            {
-                var agent = GameObject.FindObjectsOfType<EnemyAgent>();
-                EnemyAgent closest = agent[0];
-                float sqrDist = (closest.transform.position - data.position).sqrMagnitude; 
-                for (int i = 1; i < agent.Count; ++i)
-                {
-                    float comparison = (agent[i].transform.position - data.position).sqrMagnitude;
-                    if (comparison < sqrDist)
-                    {
-                        closest = agent[i];
-                        sqrDist = comparison;
-                    }
-                }
-                projectileOwners.Add(projectile.GetInstanceID(), closest);
-            }
             else if (ConfigManager.Debug)
                 APILogger.Debug(Module.Name, $"currentShooter was null, this should not happen.");
 
@@ -88,6 +74,8 @@ namespace StatTracker.Patches
         [HarmonyPrefix]
         public static void OnDestroy(ProjectileTargeting __instance)
         {
+            if (!SNetwork.SNet.IsMaster) return;
+
             if (projectileOwners.Remove(__instance.gameObject.GetInstanceID()))
                 APILogger.Debug(Module.Name, $"Projectile successfully removed.");
         }
@@ -98,6 +86,8 @@ namespace StatTracker.Patches
         [HarmonyPrefix]
         public static void Prefix_Collision(ProjectileBase __instance)
         {
+            if (!SNetwork.SNet.IsMaster) return;
+
             int instanceID = __instance.gameObject.GetInstanceID();
             if (projectileOwners.ContainsKey(instanceID))
                 hitByShooter = projectileOwners[instanceID];
@@ -119,6 +109,8 @@ namespace StatTracker.Patches
         [HarmonyPrefix]
         public static bool ShooterProjectileDamage(Dam_SyncedDamageBase __instance, float dam, Vector3 position)
         {
+            if (!SNetwork.SNet.IsMaster) return true;
+
             pMediumDamageData data = new pMediumDamageData();
             data.damage.Set(dam, __instance.HealthMax);
             data.localPosition.Set(position - __instance.GetBaseAgent().Position, 10f);
@@ -602,6 +594,63 @@ namespace StatTracker.Patches
 
         #region Tracking dodges
 
+        // Shooter projectiles
+        private static bool wasTargeting = false;
+        private static ulong player = 0;
+        [HarmonyPatch(typeof(ProjectileTargeting), nameof(ProjectileTargeting.Update))]
+        [HarmonyPrefix]
+        public static void Prefix_Update(ProjectileTargeting __instance)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+
+            int instanceID = __instance.gameObject.GetInstanceID();
+
+            if (projectileOwners.ContainsKey(instanceID))
+            {
+                wasTargeting = false;
+                if (__instance.m_isTargeting && __instance.m_playerTarget != null)
+                {
+                    wasTargeting = true;
+                    player = __instance.m_playerTarget.Owner.Lookup;
+                }
+            }
+        }
+        [HarmonyPatch(typeof(ProjectileTargeting), nameof(ProjectileTargeting.Update))]
+        [HarmonyPostfix]
+        public static void Postfix_Update(ProjectileTargeting __instance)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+
+            int instanceID = __instance.gameObject.GetInstanceID();
+
+            if (projectileOwners.ContainsKey(instanceID))
+            {
+                if (!__instance.m_isTargeting && wasTargeting)
+                {
+                    PlayerAgent target = __instance.m_playerTarget;
+                    if (__instance.m_playerTarget != null && target.Owner.Lookup == player)
+                    {
+                        PlayerStats stats;
+                        HostTracker.GetPlayer(target, out stats);
+
+                        EnemyData e;
+                        HostTracker.GetEnemyData(projectileOwners[instanceID], out e);
+
+                        DodgeEvent dodgeEvent = new DodgeEvent();
+                        dodgeEvent.type = DodgeEvent.Type.Projectile;
+                        dodgeEvent.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
+                        dodgeEvent.enemyInstanceID = e.instanceID;
+
+                        stats.dodges.Add(dodgeEvent);
+
+                        if (ConfigManager.Debug)
+                            APILogger.Debug(Module.Name, $"{__instance.m_playerTarget.PlayerName} Dodged projectile from {e.instanceID}");
+                    }
+                }
+            }
+        }
+
+        // Tongues
         [HarmonyPatch(typeof(MovingEnemyTentacleBase), nameof(MovingEnemyTentacleBase.OnAttackIsOut))]
         [HarmonyPrefix]
         public static void OnAttackIsOut(MovingEnemyTentacleBase __instance)
@@ -628,10 +677,13 @@ namespace StatTracker.Patches
                     PlayerStats stats;
                     HostTracker.GetPlayer(target, out stats);
 
+                    EnemyData e;
+                    HostTracker.GetEnemyData(__instance.m_owner, out e);
+
                     DodgeEvent dodgeEvent = new DodgeEvent();
                     dodgeEvent.type = DodgeEvent.Type.Tongue;
                     dodgeEvent.timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
-                    dodgeEvent.enemyInstanceID = __instance.m_owner.GetInstanceID();
+                    dodgeEvent.enemyInstanceID = e.instanceID;
 
                     stats.dodges.Add(dodgeEvent);
                     

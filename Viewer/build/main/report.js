@@ -8,6 +8,8 @@ let GTFOReport = function (type, json) {
             name: player.name,
             playerID: player.playerID,
             isBot: player.isBot,
+            healthMax: player.healthMax,
+            dodges: player.dodges,
             gears: {}
         };
         for (let gear in player.gears) {
@@ -29,9 +31,14 @@ let GTFOReport = function (type, json) {
     this.enemies = new Map();
     for (let id in json.enemies) {
         let data = json.enemies[id];
+        if (!(data.type in this.spec.enemies)) {
+            console.warn(`Unrecognized enemy type: ${data.type}`);
+            continue;
+        }
+        let type = this.spec.enemies[data.type].type;
         let enemy = {
             instanceID: id,
-            type: data.type,
+            type: type,
             alive: data.alive,
             health: data.health,
             healthMax: data.healthMax,
@@ -133,7 +140,62 @@ GTFOReport.prototype.getPlayerGearKills = function (id, gear) {
     }
     throw new Error(`Player or Gear, ${id} ${gear}, doesn't exist.`);
 };
+let GTFO_Shooter = {
+    type: "Shooter",
+    dodgeValue: 1.25
+};
+let GTFO_BigShooter = {
+    type: "Big Shooter",
+    dodgeValue: 1.5
+};
+let GTFO_Hybrid = {
+    type: "Hybrid",
+    dodgeValue: 1
+};
+let GTFO_Striker = {
+    type: "Striker",
+    dodgeValue: 3
+};
+let GTFO_BigStriker = {
+    type: "Big Striker",
+    dodgeValue: 6
+};
+let GTFO_Charger = {
+    type: "Charger",
+    dodgeValue: 4.5
+};
+let GTFO_BigCharger = {
+    type: "Big Charger",
+    dodgeValue: 6
+};
+let GTFO_Scout = {
+    type: "Scout",
+    dodgeValue: 1
+};
+let GTFO_ChargerScout = {
+    type: "Charger Scout",
+    dodgeValue: 0
+};
 let GTFO_R7_R4 = {
+    enemies: {
+        "Shooter": GTFO_Shooter,
+        "Big Shooter": GTFO_BigShooter,
+        "Hybrid": GTFO_Hybrid,
+        "Striker": GTFO_Striker,
+        "Big Striker": GTFO_BigStriker,
+        "Charger": GTFO_Charger,
+        "Big Charger": GTFO_BigCharger,
+        "Scout": GTFO_Scout,
+        "Charger Scout": GTFO_ChargerScout,
+        "Shooter_Wave": GTFO_Shooter,
+        "Shooter_Hibernate": GTFO_Shooter,
+        "Shooter_Big_Wave": GTFO_BigShooter,
+        "Shooter_Big_RapidFire": GTFO_Hybrid,
+        "Striker_Wave": GTFO_Striker,
+        "Striker_Hibernate": GTFO_Striker,
+        "Striker_Big_Wave": GTFO_BigStriker,
+        "Scout_Bullrush": GTFO_ChargerScout
+    },
     gear: {
         "Shelling S49": {
             type: "main",

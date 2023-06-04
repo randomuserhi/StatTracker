@@ -2,15 +2,115 @@ RHU.import(RHU.module({ trace: new Error(),
     name: "Report", hard: ["RHU.Macro", "RHU.Rest"],
     callback: function () {
         let { RHU } = window.RHU.require(window, this);
+        let playerSummary = function () {
+        };
+        playerSummary.prototype.load = function (id) {
+            let report = mount.report;
+            let spec = report.spec;
+            let player = report.players.get(id);
+            let damageAvoided = 0;
+            let dodges = {};
+            for (let event of player.dodges) {
+                let enemy = report.enemies.get(event.enemyInstanceID);
+                if (!RHU.exists(enemy)) {
+                    console.warn(`Enemy, ${event.enemyInstanceID}, does not exist.`);
+                    continue;
+                }
+                if (enemy.type in dodges)
+                    dodges[enemy.type] += 1;
+                else
+                    dodges[enemy.type] = 1;
+                let dam = spec.enemies[enemy.type].dodgeValue / player.healthMax * 100;
+                damageAvoided += dam;
+            }
+            this.damageAvoided.innerHTML = `${Math.round(damageAvoided)}`;
+            let fragment = new DocumentFragment();
+            if (true) {
+                let row = document.createElement("tr");
+                let col0 = document.createElement("td");
+                col0.style.paddingBottom = "0.5rem";
+                let col1 = document.createElement("td");
+                col1.style.paddingBottom = "0.5rem";
+                let col2 = document.createElement("td");
+                col2.style.paddingBottom = "0.5rem";
+                col0.innerHTML = `<u>Type</u>`;
+                col1.style.paddingLeft = "2rem";
+                col1.innerHTML = `<u>Occurence</u>`;
+                col2.style.paddingLeft = "2rem";
+                col2.innerHTML = `<u>Avoided</u>`;
+                row.append(col0, col1, col2);
+                fragment.append(row);
+            }
+            for (let type in dodges) {
+                let row = document.createElement("tr");
+                let col0 = document.createElement("td");
+                let col1 = document.createElement("td");
+                let col2 = document.createElement("td");
+                col0.innerHTML = `${type}`;
+                col1.style.paddingLeft = "2rem";
+                col1.innerHTML = `${dodges[type]}`;
+                col2.style.paddingLeft = "2rem";
+                col2.style.color = "#e9bc29";
+                col2.innerHTML = `${Math.round(dodges[type] * spec.enemies[type].dodgeValue / player.healthMax * 100)}`;
+                row.append(col0, col1, col2);
+                fragment.append(row);
+            }
+            this.dodgetable.replaceChildren(fragment);
+        };
+        RHU.Macro(playerSummary, "playerSummary", `
+            <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
+                <span rhu-id="name">Dodges</span>
+            </h2>
+            <div style="display: flex;">
+                <div style="flex: 0.7; padding-right: 1.5rem;">
+                    <div style="margin-bottom: 1rem">
+                        <ul style="display: flex; gap: 2.5rem;">
+                            <li style="flex: 1; display: flex;">
+                                Damage Avoided <div style="flex: 0.1"></div> <span style="color: #e9bc29;" rhu-id="damageAvoided">0</span> <div style="flex: 0.9"></div>
+                            </li>
+                            <li style="flex: 1; display: flex">
+                                
+                            </li>
+                            <li style="flex: 1; display: flex">
+                                
+                            </li>
+                        </ul>
+                    </div>
+                    <table rhu-id="dodgetable">
+                    </table>
+                </div>
+                <div style="flex: 1; padding-left: 2rem;">
+                    Crazy
+                </div>
+            </div>
+            `, {
+            element: `<div></div>`
+        });
         let gearRecap = function () {
         };
-        gearRecap.prototype.load = function (id, gear) {
+        gearRecap.prototype.load = function (id, gearID) {
             let report = mount.report;
-            this.name.innerHTML = gear;
-            this.img.src = `./icons/gear/${gear}.webp`;
-            let kills = report.getPlayerGearKills(id, gear);
-            this.kills.replaceChildren();
+            let player = report.players.get(id);
+            let gear = player.gears[gearID];
+            this.name.innerHTML = gearID;
+            this.img.src = `./icons/gear/${gearID}.webp`;
+            let kills = report.getPlayerGearKills(id, gearID);
+            let total = 0;
+            let fragment = new DocumentFragment();
+            if (true) {
+                let row = document.createElement("tr");
+                let col0 = document.createElement("td");
+                col0.style.paddingBottom = "0.5rem";
+                let col1 = document.createElement("td");
+                col1.style.paddingBottom = "0.5rem";
+                col0.innerHTML = `<u>Type</u>`;
+                col1.style.paddingLeft = "2rem";
+                col1.innerHTML = `<u>Kills</u>`;
+                row.append(col0, col1);
+                fragment.append(row);
+            }
             for (let type in kills) {
+                total += kills[type];
                 let row = document.createElement("tr");
                 let col0 = document.createElement("td");
                 let col1 = document.createElement("td");
@@ -18,18 +118,42 @@ RHU.import(RHU.module({ trace: new Error(),
                 col1.style.paddingLeft = "2rem";
                 col1.innerHTML = kills[type].toString();
                 row.append(col0, col1);
-                this.kills.append(row);
+                fragment.append(row);
             }
+            this.killtable.replaceChildren(fragment);
+            this.damage.innerHTML = `${gear.damage.toFixed(2)}`;
+            this.kills.innerHTML = `${total}`;
+            this.assists.innerHTML = `${gear.enemies.size - total}`;
             this.body.style.display = "block";
         };
         RHU.Macro(gearRecap, "gearRecap", `
-            <h2 style="display: flex; gap: 3rem; align-items: center;">
+            <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
                 <img rhu-id="img" style="height: 4rem;" src=""/>
                 <span rhu-id="name">UNKNOWN</span>
             </h2>
-            <div rhu-id="body" style="display: none;">
-                <table rhu-id="kills">
-                </table>
+            <div style="display: flex;">
+                <div style="flex: 0.7; padding-right: 1.5rem;">
+                    <div style="margin-bottom: 1rem">
+                        <ul style="display: flex; gap: 2.5rem;">
+                            <li style="flex: 1; display: flex;">
+                                Damage <div style="flex: 0.1;"></div> <span style="color: #e9bc29;" rhu-id="damage">0</span>
+                            </li>
+                            <li style="flex: 1; display: flex">
+                                Kills <div style="flex: 0.1;"></div> <span rhu-id="kills">0</span>
+                            </li>
+                            <li style="flex: 1; display: flex">
+                                Assists <div style="flex: 0.1;"></div> <span rhu-id="assists">0</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div rhu-id="body" style="display: none;">
+                        <table rhu-id="killtable">
+                        </table>
+                    </div>
+                </div>
+                <div style="flex: 1; padding-left: 2rem;">
+                    Crazy
+                </div>
             </div>
             `, {
             element: `<li></li>`
@@ -41,8 +165,9 @@ RHU.import(RHU.module({ trace: new Error(),
             let player = report.allPlayers.get(id);
             if (!RHU.exists(player))
                 return;
-            this.name.innerHTML = player?.name;
+            this.name.innerHTML = player.name;
             this.body.style.display = "block";
+            this.summary.load(player.playerID);
             let loadout = report.getLoadout(player.playerID);
             if (RHU.exists(loadout.main)) {
                 let recap = document.createMacro("gearRecap");
@@ -66,8 +191,12 @@ RHU.import(RHU.module({ trace: new Error(),
             }
         };
         RHU.Macro(playerInfoFull, "playerInfoFull", `
-            <h1 rhu-id="name">DISCONNECTED</h1>
+            <h1 rhu-id="name" style="padding-top: 2rem;">DISCONNECTED</h1>
             <div rhu-id="body" style="display: none;">
+                <rhu-macro rhu-id="summary" rhu-type="playerSummary" style="margin-top: 2rem;">
+                    <!-- player summary -->
+                    <!-- key achievements -->
+                </rhu-macro>
                 <ul rhu-id="gears" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem;">
                     <!-- gear recap -->
                 </ul>
@@ -76,6 +205,10 @@ RHU.import(RHU.module({ trace: new Error(),
                     <!-- damage taken timeline -->
                     <!-- health timeline -->
                     <!-- packs timeline -->
+                </div>
+                <div style="margin-top: 2rem;">
+                    <!-- TODO(randomuserhi) -->
+                    <!-- all achievements -->
                 </div>
             </div>
             `, {

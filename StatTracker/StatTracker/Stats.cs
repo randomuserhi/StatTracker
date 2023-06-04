@@ -132,7 +132,8 @@ namespace StatTracker
     {
         public enum Type
         {
-            Tongue
+            Tongue,
+            Projectile
         }
 
         public Type type;

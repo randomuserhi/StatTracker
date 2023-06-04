@@ -118,7 +118,7 @@ interface GTFOLimbData
 interface GTFOEnemyData
 {
     instanceID: string;
-    type: string;
+    type: GTFOEnemyType;
     alive: boolean;
     
     health: number;
@@ -141,12 +141,23 @@ interface GTFOGearData
     enemies: Set<string>;
 }
 
+interface GTFODodgeEvent
+{
+    timestamp: number;
+    type: string;
+    enemyInstanceID: string;
+}
+
 interface GTFOPlayerData
 {
     playerID: string;
     name: string;
     isBot: boolean;
+
+    healthMax: number;
     
+    dodges: GTFODodgeEvent[];
+
     gears: Record<string, GTFOGearData>;
 }
 
@@ -165,13 +176,6 @@ interface GTFOReportConstructor
 {
     new(type: string, jsonObj: JSONReport): GTFOReport;
     prototype: GTFOReport;
-}
-
-interface GTFOGear
-{
-    type: "main" | "secondary" | "tool" | "melee",
-    publicName: string,
-    archytypeName: string
 }
 
 interface GTFOLoadout
@@ -195,6 +199,11 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
             name: player.name,
             playerID: player.playerID,
             isBot: player.isBot,
+
+            healthMax: player.healthMax,
+
+            dodges: player.dodges,
+
             gears: {}
         };
         for (let gear in player.gears)
@@ -221,9 +230,15 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
     for (let id in json.enemies)
     {
         let data = json.enemies[id];
+        if (!(data.type in this.spec.enemies))
+        {
+            console.warn(`Unrecognized enemy type: ${data.type}`);
+            continue;
+        }
+        let type = this.spec.enemies[data.type].type;
         let enemy: GTFOEnemyData = {
             instanceID: id,
-            type: data.type,
+            type: type,
 
             alive: data.alive,
             health: data.health,
@@ -342,13 +357,95 @@ GTFOReport.prototype.getPlayerGearKills = function(id: string, gear: string): Re
     throw new Error(`Player or Gear, ${id} ${gear}, doesn't exist.`);
 }
 
+interface GTFOGear
+{
+    type: "main" | "secondary" | "tool" | "melee";
+    publicName: string;
+    archytypeName: string;
+}
+
+type GTFOEnemyType = 
+    "Baby Striker" | "Striker" | "Big Striker" | 
+    "Shooter" | "Big Shooter" | "Hybrid" |
+    "Charger" | "Big Charger" |
+    "Charger Scout" | "Scout" |
+    "Tank" |
+    "Mother" |
+    "Snatcher";
+
+interface GTFOEnemy
+{
+    type: GTFOEnemyType,
+    dodgeValue: number // damage avoided on dodge
+}
 
 interface GTFOSpec
 {
+    enemies: Record<string, GTFOEnemy>
     gear: Record<string, GTFOGear>
 }
 
+let GTFO_Shooter: GTFOEnemy = {
+    type: "Shooter",
+    dodgeValue: 1.25
+};
+let GTFO_BigShooter: GTFOEnemy = {
+    type: "Big Shooter",
+    dodgeValue: 1.5
+}
+let GTFO_Hybrid: GTFOEnemy = {
+    type: "Hybrid",
+    dodgeValue: 1
+}
+
+let GTFO_Striker: GTFOEnemy = {
+    type: "Striker",
+    dodgeValue: 3
+}
+let GTFO_BigStriker: GTFOEnemy = {
+    type: "Big Striker",
+    dodgeValue: 6
+}
+
+let GTFO_Charger: GTFOEnemy = {
+    type: "Charger",
+    dodgeValue: 4.5
+}
+let GTFO_BigCharger: GTFOEnemy = {
+    type: "Big Charger",
+    dodgeValue: 6
+}
+
+let GTFO_Scout: GTFOEnemy = {
+    type: "Scout",
+    dodgeValue: 1
+}
+let GTFO_ChargerScout: GTFOEnemy = {
+    type: "Charger Scout",
+    dodgeValue: 0 // can't dodge => no tongue
+}
+
 let GTFO_R7_R4: GTFOSpec = {
+    enemies: {
+        "Shooter": GTFO_Shooter,
+        "Big Shooter": GTFO_BigShooter,
+        "Hybrid": GTFO_Hybrid,
+        "Striker": GTFO_Striker,
+        "Big Striker": GTFO_BigStriker,
+        "Charger": GTFO_Charger,
+        "Big Charger": GTFO_BigCharger,
+        "Scout": GTFO_Scout,
+        "Charger Scout": GTFO_ChargerScout,
+
+        "Shooter_Wave": GTFO_Shooter,
+        "Shooter_Hibernate": GTFO_Shooter,
+        "Shooter_Big_Wave": GTFO_BigShooter,
+        "Shooter_Big_RapidFire": GTFO_Hybrid,
+        "Striker_Wave": GTFO_Striker,
+        "Striker_Hibernate": GTFO_Striker,
+        "Striker_Big_Wave": GTFO_BigStriker,
+        "Scout_Bullrush": GTFO_ChargerScout
+    },
     gear: {
         "Shelling S49": {
             type: "main",
