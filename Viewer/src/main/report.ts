@@ -45,6 +45,12 @@ interface Health
     value: number;
 }
 
+interface Infection
+{
+    timestamp: number;
+    value: number;
+}
+
 interface Player
 {
     playerID: string;
@@ -56,6 +62,8 @@ interface PlayerData extends Player
 {
     healthMax: number;
     health: Health[];
+    infection: Infection[];
+    timeSpentInScan: number;
     
     packsUsed: PackUse[];
     dodges: DodgeEvent[];
@@ -101,7 +109,8 @@ interface Enemy
 interface JSONReport
 {
     level: {
-        name: string
+        name: string,
+        checkpoints: number[]
     }
     active: Player[];
     players: PlayerData[];
@@ -185,6 +194,12 @@ interface GTFOHealthEvent
     value: number;
 }
 
+interface GTFOInfectionEvent
+{
+    timestamp: number;
+    value: number;
+}
+
 interface GTFOPlayerData
 {
     playerID: string;
@@ -192,7 +207,9 @@ interface GTFOPlayerData
     isBot: boolean;
 
     healthMax: number;
+    timeSpentInScan: number;
     
+    infectionTimeline: GTFOInfectionEvent[];
     healthTimeline: GTFOHealthEvent[];
     damageTimeline: GTFODamageEvent[];
 
@@ -208,6 +225,7 @@ interface GTFOReport
     spec: GTFOSpec;
     timetaken: number;
     level: string;
+    checkpoints: number[];
     allPlayers: Map<string, GTFOPlayerData>;
     players: Map<string, GTFOPlayerData>;
     enemies: Map<string, GTFOEnemyData>;
@@ -237,6 +255,7 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
 
     this.spec = GTFO_R7_R4;
     this.level = json.level.name;
+    this.checkpoints = json.level.checkpoints;
     this.timetaken = json.timetaken;
 
     this.allPlayers = new Map();
@@ -248,7 +267,9 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
             isBot: player.isBot,
 
             healthMax: player.healthMax,
+            timeSpentInScan: player.timeSpentInScan,
 
+            infectionTimeline: player.infection,
             healthTimeline: player.health,
             damageTimeline: player.damageTaken,
 
@@ -258,6 +279,7 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
 
             gears: {}
         };
+
         p.healthTimeline.unshift({
             timestamp: 0,
             value: p.healthMax
@@ -266,6 +288,11 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
             timestamp: json.timetaken,
             value: p.healthTimeline[p.healthTimeline.length - 1].value
         });
+        p.infectionTimeline.unshift({
+            timestamp: 0,
+            value: 0
+        });
+
         for (let packUse of player.packsUsed)
         {
             if (!(packUse.type in p.packs))
@@ -536,7 +563,7 @@ let GTFO_R7_R4: GTFOSpec = {
 
         "Shooter_Wave": GTFO_Shooter,
         "Shooter_Hibernate": GTFO_Shooter,
-        "Shooter_Big_Wave": GTFO_BigShooter,
+        "Shooter_Big": GTFO_BigShooter,
         "Shooter_Big_RapidFire": GTFO_Hybrid,
         "Striker_Wave": GTFO_Striker,
         "Striker_Hibernate": GTFO_Striker,

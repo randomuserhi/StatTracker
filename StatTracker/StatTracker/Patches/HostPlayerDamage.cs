@@ -7,6 +7,8 @@ using UnityEngine;
 using SNetwork;
 using static Agents.AgentReplicatedActions;
 using GameData;
+using ChainedPuzzles;
+using Gear;
 
 namespace StatTracker.Patches
 {
@@ -436,13 +438,133 @@ namespace StatTracker.Patches
             }
         }
 
-        #region Tracking Packs
+        #region Tracking scan time
+
+        [HarmonyPatch(typeof(CP_Bioscan_Core), nameof(CP_Bioscan_Core.AddPlayersInScanToList))]
+        [HarmonyPostfix]
+        public static void AddPlayersInScanToList(pBioscanState state, List<PlayerAgent> playerAgents)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+
+            if (state.playersInScan >= 1 && state.playerInScan1.GetPlayer(out var player))
+            {
+                PlayerStats stats;
+                HostTracker.GetPlayer(player, out stats);
+
+                stats.timeSpentInScan += Time.deltaTime;
+            }
+            if (state.playersInScan >= 2 && state.playerInScan2.GetPlayer(out player))
+            {
+                PlayerStats stats;
+                HostTracker.GetPlayer(player, out stats);
+
+                stats.timeSpentInScan += Time.deltaTime;
+            }
+            if (state.playersInScan >= 3 && state.playerInScan3.GetPlayer(out player))
+            {
+                PlayerStats stats;
+                HostTracker.GetPlayer(player, out stats);
+
+                stats.timeSpentInScan += Time.deltaTime;
+            }
+            if (state.playersInScan >= 4 && state.playerInScan4.GetPlayer(out player))
+            {
+                PlayerStats stats;
+                HostTracker.GetPlayer(player, out stats);
+
+                stats.timeSpentInScan += Time.deltaTime;
+            }
+        }
+
+        #endregion
+
+        #region Tracking checkpoints
+
+            [HarmonyPatch(typeof(CheckpointManager), nameof(CheckpointManager.OnStateChange))]
+        [HarmonyPostfix]
+        public static void OnStateChange(pCheckpointState oldState, pCheckpointState newState, bool isRecall)
+        {
+            if (!SNet.IsMaster) return;
+            if (oldState.isReloadingCheckpoint && isRecall && !SNet.MasterManagement.IsMigrating)
+            {
+                long timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
+                HostTracker.level.checkpoints.Add(timestamp);
+
+                foreach (PlayerAgent player in PlayerManager.PlayerAgentsInLevel)
+                {
+                    PlayerStats stats;
+                    HostTracker.GetPlayer(player, out stats);
+
+                    HealthEvent healthEvent = new HealthEvent();
+                    healthEvent.timestamp = timestamp;
+                    healthEvent.value = player.Damage.Health;
+
+                    stats.health.Add(healthEvent);
+
+                    InfectionEvent infectionEvent = new InfectionEvent();
+                    infectionEvent.timestamp = timestamp;
+                    infectionEvent.value = player.Damage.Infection;
+
+                    stats.infection.Add(infectionEvent);
+
+                    if (stats.aliveStates.Last().type == AliveStateEvent.Type.Down)
+                    {
+                        AliveStateEvent aliveStateEvent = new AliveStateEvent();
+                        aliveStateEvent.timestamp = timestamp;
+                        aliveStateEvent.type = AliveStateEvent.Type.Checkpoint;
+                        aliveStateEvent.playerID = null;
+
+                        stats.aliveStates.Add(aliveStateEvent);
+                    }
+
+                    APILogger.Debug(Module.Name, $"{player.PlayerName} {player.Damage.Health}");
+                }
+            }
+        }
+
+        #endregion
+
+        #region Tracking Packs (and infection)
+
+        // TODO(randomuserhi): Figure out how to find out who gave disinfect to who
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveModifyInfection))]
+        [HarmonyPostfix]
+        public static void ReceiveModifyInfection(Dam_PlayerDamageBase __instance, pInfection data)
+        {
+            if (!SNet.IsMaster) return;
+
+            PlayerStats stats;
+            HostTracker.GetPlayer(__instance.Owner, out stats);
+
+            long timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
+
+            InfectionEvent infectionEvent = new InfectionEvent();
+            infectionEvent.timestamp = timestamp;
+            infectionEvent.value = __instance.Infection;
+
+            stats.infection.Add(infectionEvent);
+
+            if (data.effect == pInfectionEffect.DisinfectionPack)
+            {
+                PackUse pack = new PackUse();
+                pack.type = PackUse.Type.Disinfect;
+                pack.timestamp = timestamp;
+                pack.playerID = null;
+
+                stats.packsUsed.Add(pack);
+
+                if (ConfigManager.Debug)
+                    APILogger.Debug(Module.Name, $"{stats.playerName} was disinfected.");
+            }
+        }
 
         // TODO(randomuserhi): Figure out how to find out who gave ammo to who
         [HarmonyPatch(typeof(PlayerBackpackManager), nameof(PlayerBackpackManager.ReceiveAmmoGive))]
         [HarmonyPostfix]
         public static void ReceiveAmmoGive(pAmmoGive data)
         {
+            if (!SNetwork.SNet.IsMaster) return;
+
             SNet_Player player;
             if (data.targetPlayer.TryGetPlayer(out player))
             {
@@ -480,6 +602,22 @@ namespace StatTracker.Patches
             oldHealthHealing = __instance.Health;
         }
 
+        private static PlayerAgent? sourcePackUser = null;
+
+        [HarmonyPatch(typeof(ResourcePackFirstPerson), nameof(ResourcePackFirstPerson.ApplyPackBot))]
+        [HarmonyPrefix]
+        public static void ApplyPackBot(PlayerAgent ownerAgent, PlayerAgent receiverAgent, ItemEquippable resourceItem)
+        {
+            if (!SNetwork.SNet.IsMaster) return;
+
+            switch (resourceItem.ItemDataBlock.persistentID)
+            {
+                case 102u:
+                    sourcePackUser = ownerAgent;
+                    break;
+            }
+        }
+
         [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveAddHealth))]
         [HarmonyPostfix]
         public static void Postfix_ReceiveAddHealth(Dam_PlayerDamageBase __instance, pAddHealthData data)
@@ -492,8 +630,13 @@ namespace StatTracker.Patches
             float healing = __instance.Health - oldHealthHealing;
             if (healing > 0)
             {
-                Agent a;
-                if (data.source.TryGet(out a))
+                Agent? a = null;
+                if (sourcePackUser == null)
+                    data.source.TryGet(out a);
+                else
+                    a = sourcePackUser;
+
+                if (a != null)
                 {
                     PlayerAgent? p = a.TryCast<PlayerAgent>();
                     if (p != null)
@@ -521,6 +664,8 @@ namespace StatTracker.Patches
             healthEvent.value = __instance.Health;
 
             self.health.Add(healthEvent);
+
+            sourcePackUser = null;
         }
 
         #endregion
@@ -548,6 +693,12 @@ namespace StatTracker.Patches
                     aliveStateEvent.playerID = source.playerID;
 
                     target.aliveStates.Add(aliveStateEvent);
+
+                    HealthEvent healthEvent = new HealthEvent();
+                    healthEvent.timestamp = timestamp;
+                    healthEvent.value = 5;
+
+                    target.health.Add(healthEvent);
 
                     if (ConfigManager.Debug)
                         APILogger.Debug(Module.Name, $"{target.playerName} was revived by {source.playerName}");

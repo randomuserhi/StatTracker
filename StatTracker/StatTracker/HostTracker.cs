@@ -22,6 +22,8 @@ namespace StatTracker
         //                                                                    thats already dead, thus counting as a dud hit
         public static Dictionary<int, EnemyData> enemyData = new Dictionary<int, EnemyData>();
 
+        public static LevelData level = new LevelData();
+
         public static void OnRundownStart()
         {
             if (ConfigManager.Debug) APILogger.Debug(Module.Name, "OnRundownStart (host) => Reset internal dictionaries.");
@@ -29,6 +31,7 @@ namespace StatTracker
             startTime = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds();
             players.Clear();
 
+            level = new LevelData();
             HostDamage.mines.Clear();
             HostPlayerDamage.projectileOwners.Clear();
         }

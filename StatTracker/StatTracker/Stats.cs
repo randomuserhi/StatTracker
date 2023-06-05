@@ -44,6 +44,11 @@ namespace StatTracker
         }
     }
 
+    public class LevelData
+    {
+        public List<long> checkpoints = new List<long>();
+    }
+
     public class LimbDamageData
     {
         public readonly ulong playerID;
@@ -148,12 +153,19 @@ namespace StatTracker
         public float value;
     }
 
+    public struct InfectionEvent
+    {
+        public long timestamp;
+        public float value;
+    }
+
     public struct AliveStateEvent
     {
         public enum Type
         {
             Down,
-            Revive
+            Revive,
+            Checkpoint
         }
 
         public Type type;
@@ -169,7 +181,8 @@ namespace StatTracker
         {
             Health,
             Ammo,
-            Tool
+            Tool,
+            Disinfect
         }
 
         public Type type;
@@ -184,6 +197,8 @@ namespace StatTracker
         public readonly string playerName = "";
         public readonly bool isBot = false;
         public float healthMax;
+
+        public float timeSpentInScan = 0;
 
         public PlayerStats(ulong id, string name, bool isBot)
         {
@@ -201,6 +216,9 @@ namespace StatTracker
 
         // List of dodge events
         public List<DodgeEvent> dodges = new List<DodgeEvent>();
+
+        // List of infection events
+        public List<InfectionEvent> infection = new List<InfectionEvent>();
 
         // List of health events
         public List<HealthEvent> health = new List<HealthEvent>();

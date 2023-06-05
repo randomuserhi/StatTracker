@@ -140,6 +140,7 @@ interface playerSummary extends HTMLDivElement
     med: HTMLSpanElement;
     ammo: HTMLSpanElement;
     tool: HTMLSpanElement;
+    disinfect: HTMLSpanElement;
 
     damageAvoided: HTMLSpanElement;
     dodgetable: HTMLTableElement;
@@ -167,6 +168,7 @@ RHU.import(RHU.module({ trace: new Error(),
             if (RHU.exists(player.packs["Health"])) this.med.innerHTML = `${player.packs["Health"].length}`;
             if (RHU.exists(player.packs["Ammo"])) this.ammo.innerHTML = `${player.packs["Ammo"].length}`;
             if (RHU.exists(player.packs["Tool"])) this.tool.innerHTML = `${player.packs["Tool"].length}`;
+            if (RHU.exists(player.packs["Disinfect"])) this.disinfect.innerHTML = `${player.packs["Disinfect"].length}`;
 
             let damageAvoided = 0;
             let dodges: Record<string, number> = {};
@@ -251,6 +253,10 @@ RHU.import(RHU.module({ trace: new Error(),
                     <li style="display: flex; gap: 1rem; align-items: center;">
                         <img style="width: 4rem;" src="./icons/packs/Tool.webp"/>
                         <span rhu-id="tool">0</span>
+                    </li>
+                    <li style="display: flex; gap: 1rem; align-items: center;">
+                        <img style="width: 4rem;" src="./icons/packs/Disinfect.webp"/>
+                        <span rhu-id="disinfect">0</span>
                     </li>
                 </ul>
             </div>

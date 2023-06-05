@@ -3,6 +3,7 @@ let GTFOReport = function (type, json) {
         throw new Error("Report type not recognised.");
     this.spec = GTFO_R7_R4;
     this.level = json.level.name;
+    this.checkpoints = json.level.checkpoints;
     this.timetaken = json.timetaken;
     this.allPlayers = new Map();
     for (let player of json.players) {
@@ -11,6 +12,8 @@ let GTFOReport = function (type, json) {
             playerID: player.playerID,
             isBot: player.isBot,
             healthMax: player.healthMax,
+            timeSpentInScan: player.timeSpentInScan,
+            infectionTimeline: player.infection,
             healthTimeline: player.health,
             damageTimeline: player.damageTaken,
             dodges: player.dodges,
@@ -24,6 +27,10 @@ let GTFOReport = function (type, json) {
         p.healthTimeline.push({
             timestamp: json.timetaken,
             value: p.healthTimeline[p.healthTimeline.length - 1].value
+        });
+        p.infectionTimeline.unshift({
+            timestamp: 0,
+            value: 0
         });
         for (let packUse of player.packsUsed) {
             if (!(packUse.type in p.packs))
@@ -232,7 +239,7 @@ let GTFO_R7_R4 = {
         "Charger Scout": GTFO_ChargerScout,
         "Shooter_Wave": GTFO_Shooter,
         "Shooter_Hibernate": GTFO_Shooter,
-        "Shooter_Big_Wave": GTFO_BigShooter,
+        "Shooter_Big": GTFO_BigShooter,
         "Shooter_Big_RapidFire": GTFO_Hybrid,
         "Striker_Wave": GTFO_Striker,
         "Striker_Hibernate": GTFO_Striker,

@@ -4,7 +4,7 @@ using Globals;
 using HarmonyLib;
 using Il2CppSystem.Text;
 using Player;
-using System.Security.Cryptography.X509Certificates;
+using UnityEngine;
 
 // TODO(randomuserhi): Fix exit expedition not creating save file
 
@@ -130,6 +130,21 @@ namespace StatTracker.Patches
             return json.ToString();
         }
 
+        private static string Serialize(List<InfectionEvent> track)
+        {
+            StringBuilder json = new StringBuilder();
+
+            string seperator = string.Empty;
+            foreach (InfectionEvent e in track)
+            {
+                json.Append($"{seperator}{{\"timestamp\":{e.timestamp},\"value\":\"{e.value}\"");
+                json.Append($"}}");
+                seperator = ",";
+            }
+
+            return json.ToString();
+        }
+
         private static string Serialize(EnemyData enemy)
         {
             StringBuilder json = new StringBuilder();
@@ -227,6 +242,20 @@ namespace StatTracker.Patches
             return json.ToString();
         }
 
+        private static string Serialize(List<long> track)
+        {
+            StringBuilder json = new StringBuilder();
+
+            string seperator = string.Empty;
+            foreach (long value in track)
+            {
+                json.Append($"{seperator}{value}");
+                seperator = ",";
+            }
+
+            return json.ToString();
+        }
+
         [HarmonyPatch(typeof(RundownManager), nameof(RundownManager.EndGameSession))]
         [HarmonyPrefix]
         public static void EndGameSession()
@@ -253,7 +282,7 @@ namespace StatTracker.Patches
                 json.Append($"{{\"reportType\": \"HOST\",\"report\":{{");
 
                 json.Append($"\"timetaken\":{((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime},");
-                json.Append($"\"level\":{{\"name\":\"{shortName}\"}},");
+                json.Append($"\"level\":{{\"name\":\"{shortName}\",\"checkpoints\":[{Serialize(HostTracker.level.checkpoints)}]}},");
 
                 json.Append($"\"active\":[");
                 string seperator = string.Empty;
@@ -275,12 +304,14 @@ namespace StatTracker.Patches
                     json.Append($"{seperator}{{\"playerID\":\"{player.playerID}\",");
                     json.Append($"\"name\":\"{player.playerName}\",\"isBot\":{player.isBot.ToString().ToLower()},");
                     json.Append($"\"healthMax\":{player.healthMax},");
+                    json.Append($"\"timeSpentInScan\":{Mathf.RoundToInt(player.timeSpentInScan * 1000)},");
                     json.Append($"\"gears\":{{{Serialize(player.gears)}}},");
                     json.Append($"\"damageTaken\":[{Serialize(player.damageTaken)}],");
                     json.Append($"\"dodges\":[{Serialize(player.dodges)}],");
                     json.Append($"\"aliveStates\":[{Serialize(player.aliveStates)}],");
                     json.Append($"\"packsUsed\":[{Serialize(player.packsUsed)}],");
-                    json.Append($"\"health\":[{Serialize(player.health)}]");
+                    json.Append($"\"health\":[{Serialize(player.health)}],");
+                    json.Append($"\"infection\":[{Serialize(player.infection)}]");
                     json.Append($"}}");
                     seperator = ",";
                 }
