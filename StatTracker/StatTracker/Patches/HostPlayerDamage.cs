@@ -618,6 +618,24 @@ namespace StatTracker.Patches
             }
         }
 
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveSetHealth))]
+        [HarmonyPostfix]
+        public static void Postfix_ReceiveSetHealth(Dam_PlayerDamageBase __instance)
+        {
+            if (!SNet.IsMaster) return;
+
+            PlayerStats stats;
+            HostTracker.GetPlayer(__instance.Owner, out stats);
+
+            long timestamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime;
+
+            HealthEvent healthEvent = new HealthEvent();
+            healthEvent.timestamp = timestamp;
+            healthEvent.value = __instance.Health;
+
+            stats.health.Add(healthEvent);
+        }
+
         [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveAddHealth))]
         [HarmonyPostfix]
         public static void Postfix_ReceiveAddHealth(Dam_PlayerDamageBase __instance, pAddHealthData data)
@@ -693,12 +711,6 @@ namespace StatTracker.Patches
                     aliveStateEvent.playerID = source.playerID;
 
                     target.aliveStates.Add(aliveStateEvent);
-
-                    HealthEvent healthEvent = new HealthEvent();
-                    healthEvent.timestamp = timestamp;
-                    healthEvent.value = 5;
-
-                    target.health.Add(healthEvent);
 
                     if (ConfigManager.Debug)
                         APILogger.Debug(Module.Name, $"{target.playerName} was revived by {source.playerName}");

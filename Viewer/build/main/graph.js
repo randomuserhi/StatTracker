@@ -170,11 +170,22 @@ RHU.import(RHU.module({ trace: new Error(),
                 let metrics = ctx.measureText(text);
                 ctx.fillStyle = "#dadad1";
                 ctx.fillText(text, this.mouse.x - metrics.width / 2, -maximum - 40);
-                ctx.font = "20px Oxanium";
-                text = `${(this.mouse.x + this.camera.x - w / 2) * timePerPixel}`;
-                metrics = ctx.measureText(text);
-                ctx.fillStyle = "#dadad1";
-                ctx.fillText(text, this.mouse.x - metrics.width / 2, maximum + 40);
+                let time = (this.mouse.x + this.camera.x - w / 2) * timePerPixel;
+                if (time > 0) {
+                    ctx.font = "20px Oxanium";
+                    let seconds = Math.floor(time / 1000);
+                    let minutes = Math.floor(seconds / 60);
+                    let hours = Math.floor(minutes / 60);
+                    let s = seconds - minutes * 60;
+                    let m = minutes - hours * 60;
+                    if (hours > 0)
+                        text = `${hours.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                    else
+                        text = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                    metrics = ctx.measureText(text);
+                    ctx.fillStyle = "#dadad1";
+                    ctx.fillText(text, this.mouse.x - metrics.width / 2, maximum + 60);
+                }
                 if (infection != 0) {
                     ctx.font = "20px Oxanium";
                     text = `${Math.round(infection * 100)}`;
