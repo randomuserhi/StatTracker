@@ -527,9 +527,9 @@ namespace StatTracker.Patches
         #region Tracking Packs (and infection)
 
         // TODO(randomuserhi): Figure out how to find out who gave disinfect to who
-        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ReceiveModifyInfection))]
+        [HarmonyPatch(typeof(Dam_PlayerDamageBase), nameof(Dam_PlayerDamageBase.ModifyInfection))]
         [HarmonyPostfix]
-        public static void ReceiveModifyInfection(Dam_PlayerDamageBase __instance, pInfection data)
+        public static void ModifyInfection(Dam_PlayerDamageBase __instance, pInfection data, bool sync, bool updatePageMap)
         {
             if (!SNet.IsMaster) return;
 

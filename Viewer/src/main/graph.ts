@@ -144,7 +144,8 @@ RHU.import(RHU.module({ trace: new Error(),
                 ctx.save();
                 ctx.translate(w/2, 0);
 
-                let value = this.player.healthMax;
+                let health = this.player.healthMax;
+                let infection = 0;
 
                 // Plot health
                 if (true)
@@ -167,9 +168,8 @@ RHU.import(RHU.module({ trace: new Error(),
                     
                     // Cursor value
                     if (x < this.mouse.x - w/2)
-                        value = event.value;
+                        health = event.value;
 
-                    // TODO(randomuserhi) => shift x to nearest grid point
                     ctx.beginPath();
                     let y = maximum - 2 * maximum * percentage;
                     ctx.moveTo(x, y);
@@ -183,9 +183,8 @@ RHU.import(RHU.module({ trace: new Error(),
 
                         // Cursor value
                         if (x < this.mouse.x - w/2)
-                            value = event.value;
+                            health = event.value;
 
-                        // TODO(randomuserhi) => shift x to nearest grid point
                         ctx.lineTo(x, y);
                         y = maximum - 2 * maximum * percentage;
                         ctx.lineTo(x, y);
@@ -199,6 +198,57 @@ RHU.import(RHU.module({ trace: new Error(),
                     ctx.stroke();
                 }
 
+                // Plot infection
+                if (true)
+                {
+                    let timeline = this.player.infectionTimeline;
+
+                    let index = 0;
+                    for (; index < timeline.length; ++index)
+                    {
+                        if (timeline[index].timestamp > start)
+                        {
+                            if (index > 0) --index;
+                            break;
+                        }
+                    }
+
+                    let event = timeline[index];
+                    let percentage = 1 - event.value;
+                    let x = (Math.round(event.timestamp / timePerGrid) * timePerGrid / timePerPixel) - this.camera.x;
+
+                    // Cursor value
+                    if (x < this.mouse.x - w/2)
+                        infection = event.value;
+
+                    ctx.beginPath();
+                    let y = maximum - 2 * maximum * percentage;
+                    ctx.moveTo(x, y);
+
+                    ++index;
+                    for (; index < timeline.length; ++index)
+                    {
+                        let event = timeline[index];
+                        let percentage = 1 - event.value;
+                        let x = (Math.round(event.timestamp / timePerGrid) * timePerGrid / timePerPixel) - this.camera.x;
+
+                        // Cursor value
+                        if (x < this.mouse.x - w/2)
+                            infection = event.value;
+
+                        ctx.lineTo(x, y);
+                        y = maximum - 2 * maximum * percentage;
+                        ctx.lineTo(x, y);
+
+                        if (timeline[index].timestamp > end)
+                            break;
+                    }
+
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = "#68cefe";
+                    ctx.stroke();
+                }
+
                 ctx.restore();
 
                 ctx.beginPath();
@@ -209,9 +259,25 @@ RHU.import(RHU.module({ trace: new Error(),
                 ctx.stroke();
 
                 ctx.font = "20px Oxanium";
-                let text = `${Math.round(value / this.player.healthMax * 100)}`;
+                let text = `${Math.round(health / this.player.healthMax * 100)}`;
                 let metrics = ctx.measureText(text);
-                ctx.strokeText(text, this.mouse.x - metrics.width / 2, - maximum - 40);
+                ctx.fillStyle = "#dadad1";
+                ctx.fillText(text, this.mouse.x - metrics.width / 2, - maximum - 40);
+
+                ctx.font = "20px Oxanium";
+                text = `${(this.mouse.x + this.camera.x - w/2) * timePerPixel}`;
+                metrics = ctx.measureText(text);
+                ctx.fillStyle = "#dadad1";
+                ctx.fillText(text, this.mouse.x - metrics.width / 2, maximum + 60);
+
+                if (infection != 0)
+                {
+                    ctx.font = "20px Oxanium";
+                    text = `${Math.round(infection * 100)}`;
+                    metrics = ctx.measureText(text);
+                    ctx.fillStyle = "#68cefe";
+                    ctx.fillText(text, this.mouse.x - metrics.width / 2, - maximum - 60);
+                }
             }
         };
         graph.prototype.load = function(player: GTFOPlayerData)

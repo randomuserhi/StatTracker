@@ -292,6 +292,10 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
             timestamp: 0,
             value: 0
         });
+        p.infectionTimeline.push({
+            timestamp: json.timetaken,
+            value: p.infectionTimeline[p.infectionTimeline.length - 1].value
+        });
 
         for (let packUse of player.packsUsed)
         {

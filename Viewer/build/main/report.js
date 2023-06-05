@@ -32,6 +32,10 @@ let GTFOReport = function (type, json) {
             timestamp: 0,
             value: 0
         });
+        p.infectionTimeline.push({
+            timestamp: json.timetaken,
+            value: p.infectionTimeline[p.infectionTimeline.length - 1].value
+        });
         for (let packUse of player.packsUsed) {
             if (!(packUse.type in p.packs))
                 p.packs[packUse.type] = [];
