@@ -2,6 +2,8 @@ let GTFOReport = function (type, json) {
     if (type != "HOST")
         throw new Error("Report type not recognised.");
     this.spec = GTFO_R7_R4;
+    this.level = json.level.name;
+    this.timetaken = json.timetaken;
     this.allPlayers = new Map();
     for (let player of json.players) {
         let p = {
@@ -9,9 +11,29 @@ let GTFOReport = function (type, json) {
             playerID: player.playerID,
             isBot: player.isBot,
             healthMax: player.healthMax,
+            healthTimeline: player.health,
+            damageTimeline: player.damageTaken,
             dodges: player.dodges,
+            packs: {},
             gears: {}
         };
+        p.healthTimeline.unshift({
+            timestamp: 0,
+            value: p.healthMax
+        });
+        p.healthTimeline.push({
+            timestamp: json.timetaken,
+            value: p.healthTimeline[p.healthTimeline.length - 1].value
+        });
+        for (let packUse of player.packsUsed) {
+            if (!(packUse.type in p.packs))
+                p.packs[packUse.type] = [];
+            p.packs[packUse.type].push({
+                timestamp: packUse.timestamp,
+                type: packUse.type,
+                playerID: packUse.playerID
+            });
+        }
         for (let gear in player.gears) {
             let data = player.gears[gear];
             p.gears[gear] = {
@@ -21,6 +43,9 @@ let GTFOReport = function (type, json) {
                 damage: data.damage,
                 enemies: new Set()
             };
+            if (gear === "Krieger O4" || gear === "Consumable Mine") {
+                p.gears[gear].mines = {};
+            }
         }
         this.allPlayers.set(player.playerID, p);
     }
@@ -51,6 +76,15 @@ let GTFOReport = function (type, json) {
         if (RHU.exists(enemy.killer) && RHU.exists(enemy.killerGear)) {
             let G = this.getPlayerGear(enemy.killer, enemy.killerGear);
             G.enemies.add(id);
+            if (RHU.exists(G.mines) && RHU.exists(enemy.mineInstance)) {
+                if (!(enemy.mineInstance in G.mines))
+                    G.mines[enemy.mineInstance] = {
+                        instance: enemy.mineInstance,
+                        timestamp: enemy.timestamp,
+                        enemies: new Set()
+                    };
+                G.mines[enemy.mineInstance].enemies.add(id);
+            }
         }
         for (let l in data.limbData) {
             let L = data.limbData[l];
@@ -72,6 +106,15 @@ let GTFOReport = function (type, json) {
                         damage: damage,
                         enemies: G.enemies
                     };
+                    if (RHU.exists(G.mines) && RHU.exists(enemy.mineInstance)) {
+                        if (!(enemy.mineInstance in G.mines))
+                            G.mines[enemy.mineInstance] = {
+                                instance: enemy.mineInstance,
+                                timestamp: enemy.timestamp,
+                                enemies: new Set()
+                            };
+                        G.mines[enemy.mineInstance].enemies.add(id);
+                    }
                 }
             }
             enemy.limbData[l] = limb;

@@ -1,7 +1,10 @@
 ﻿using API;
+using GameData;
+using Globals;
 using HarmonyLib;
 using Il2CppSystem.Text;
 using Player;
+using System.Security.Cryptography.X509Certificates;
 
 // TODO(randomuserhi): Fix exit expedition not creating save file
 
@@ -232,10 +235,25 @@ namespace StatTracker.Patches
 
             StringBuilder json = new StringBuilder();
 
+            string[] Tiers = new string[] {
+                    "-",
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E"
+                };
+            pActiveExpedition expedition = RundownManager.GetActiveExpeditionData();
+            RundownDataBlock data = GameDataBlockBase<RundownDataBlock>.GetBlock(Global.RundownIdToLoad);
+            string shortName = data.GetExpeditionData(expedition.tier, expedition.expeditionIndex).GetShortName(expedition.expeditionIndex);
+
             json.Append($"[");
             if (SNetwork.SNet.IsMaster)
             {
                 json.Append($"{{\"reportType\": \"HOST\",\"report\":{{");
+
+                json.Append($"\"timetaken\":{((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() - HostTracker.startTime},");
+                json.Append($"\"level\":{{\"name\":\"{shortName}\"}},");
 
                 json.Append($"\"active\":[");
                 string seperator = string.Empty;
@@ -286,7 +304,7 @@ namespace StatTracker.Patches
             if (SNetwork.SNet.IsMaster)
             {
                 //Directory.CreateDirectory(ConfigManager.ReportPath);
-                File.WriteAllText(Path.Join(ConfigManager.ReportPath, $"report-{DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")}.json"), json.ToString());
+                File.WriteAllText(Path.Join(ConfigManager.ReportPath, $"{shortName}-{DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")}.json"), json.ToString());
             }
         }
     }

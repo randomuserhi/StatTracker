@@ -100,9 +100,13 @@ interface Enemy
 
 interface JSONReport
 {
+    level: {
+        name: string
+    }
     active: Player[];
     players: PlayerData[];
     enemies: Record<string, Enemy>;
+    timetaken: number;
 }
 
 interface GTFOLimbData
@@ -132,6 +136,13 @@ interface GTFOEnemyData
     limbData: Record<string, GTFOLimbData>;
 }
 
+interface GTFOMineInstance
+{
+    instance: string;
+    timestamp: number;
+    enemies: Set<string>;
+}
+
 interface GTFOGearData
 {
     playerID: string;
@@ -139,6 +150,7 @@ interface GTFOGearData
     archytype: string;
     damage: number;
     enemies: Set<string>;
+    mines?: Record<string, GTFOMineInstance>;
 }
 
 interface GTFODodgeEvent
@@ -146,6 +158,31 @@ interface GTFODodgeEvent
     timestamp: number;
     type: string;
     enemyInstanceID: string;
+}
+
+interface GTFOPackUseEvent
+{
+    timestamp: number;
+    type: string;
+    playerID?: string;
+}
+
+interface GTFODamageEvent
+{
+    timestamp: number;
+    type: string;
+    damage: number;
+
+    enemyInstanceID?: string;
+    
+    playerID: string;
+    gearName: string;
+}
+
+interface GTFOHealthEvent
+{
+    timestamp: number;
+    value: number;
 }
 
 interface GTFOPlayerData
@@ -156,6 +193,11 @@ interface GTFOPlayerData
 
     healthMax: number;
     
+    healthTimeline: GTFOHealthEvent[];
+    damageTimeline: GTFODamageEvent[];
+
+    packs: Record<string, GTFOPackUseEvent[]>;
+
     dodges: GTFODodgeEvent[];
 
     gears: Record<string, GTFOGearData>;
@@ -164,6 +206,8 @@ interface GTFOPlayerData
 interface GTFOReport
 {
     spec: GTFOSpec;
+    timetaken: number;
+    level: string;
     allPlayers: Map<string, GTFOPlayerData>;
     players: Map<string, GTFOPlayerData>;
     enemies: Map<string, GTFOEnemyData>;
@@ -171,6 +215,7 @@ interface GTFOReport
     getLoadout(id: string): GTFOLoadout;
     getPlayerGear(id: string, gear: string): GTFOGearData;
     getPlayerGearKills(id: string, gear: string): Record<string, number>;
+    getPackUse(id: string): { med: number, ammo: number, tool: number };
 }
 interface GTFOReportConstructor
 {
@@ -191,6 +236,8 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
     if (type != "HOST") throw new Error("Report type not recognised.");
 
     this.spec = GTFO_R7_R4;
+    this.level = json.level.name;
+    this.timetaken = json.timetaken;
 
     this.allPlayers = new Map();
     for (let player of json.players)
@@ -202,10 +249,34 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
 
             healthMax: player.healthMax,
 
+            healthTimeline: player.health,
+            damageTimeline: player.damageTaken,
+
             dodges: player.dodges,
+
+            packs: {},
 
             gears: {}
         };
+        p.healthTimeline.unshift({
+            timestamp: 0,
+            value: p.healthMax
+        });
+        p.healthTimeline.push({
+            timestamp: json.timetaken,
+            value: p.healthTimeline[p.healthTimeline.length - 1].value
+        });
+        for (let packUse of player.packsUsed)
+        {
+            if (!(packUse.type in p.packs))
+                p.packs[packUse.type] = [];
+
+            p.packs[packUse.type].push({
+                timestamp: packUse.timestamp,
+                type: packUse.type,
+                playerID: packUse.playerID
+            });
+        }
         for (let gear in player.gears)
         {
             let data = player.gears[gear];
@@ -215,6 +286,11 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
                 archytype: RHU.exists(this.spec.gear[gear]) ? this.spec.gear[gear].archytypeName : "",
                 damage: data.damage,
                 enemies: new Set()
+            }
+
+            if (gear === "Krieger O4" || gear === "Consumable Mine")
+            {
+                p.gears[gear].mines = {};
             }
         }
         this.allPlayers.set(player.playerID, p);
@@ -255,6 +331,17 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
         {
             let G = this.getPlayerGear(enemy.killer, enemy.killerGear);
             G.enemies.add(id);
+
+            if (RHU.exists(G.mines) && RHU.exists(enemy.mineInstance))
+            {
+                if (!(enemy.mineInstance in G.mines))
+                    G.mines[enemy.mineInstance] = {
+                        instance: enemy.mineInstance,
+                        timestamp: enemy.timestamp!,
+                        enemies: new Set()
+                    };
+                G.mines[enemy.mineInstance].enemies.add(id);
+            }
         }
         for (let l in data.limbData)
         {
@@ -280,6 +367,16 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
                         archytype: RHU.exists(this.spec.gear[g]) ? this.spec.gear[g].archytypeName : "",
                         damage: damage,
                         enemies: G.enemies
+                    }
+                    if (RHU.exists(G.mines) && RHU.exists(enemy.mineInstance))
+                    {
+                        if (!(enemy.mineInstance in G.mines))
+                            G.mines[enemy.mineInstance] = {
+                                instance: enemy.mineInstance,
+                                timestamp: enemy.timestamp!,
+                                enemies: new Set()
+                            };
+                        G.mines[enemy.mineInstance].enemies.add(id);
                     }
                 }
             }

@@ -124,6 +124,7 @@ interface gearRecap extends HTMLLIElement
     assists: HTMLSpanElement;
 
     killtable: HTMLTableElement;
+    instances: HTMLDivElement;
 }
 interface gearRecapConstructor extends RHU.Macro.Constructor<gearRecap>
 {
@@ -133,6 +134,12 @@ interface gearRecapConstructor extends RHU.Macro.Constructor<gearRecap>
 interface playerSummary extends HTMLDivElement
 {
     load(id: string): void;
+
+    timeline: graph;
+
+    med: HTMLSpanElement;
+    ammo: HTMLSpanElement;
+    tool: HTMLSpanElement;
 
     damageAvoided: HTMLSpanElement;
     dodgetable: HTMLTableElement;
@@ -157,6 +164,10 @@ RHU.import(RHU.module({ trace: new Error(),
             let spec = report.spec;
             let player = report.players.get(id)!;
             
+            if (RHU.exists(player.packs["Health"])) this.med.innerHTML = `${player.packs["Health"].length}`;
+            if (RHU.exists(player.packs["Ammo"])) this.ammo.innerHTML = `${player.packs["Ammo"].length}`;
+            if (RHU.exists(player.packs["Tool"])) this.tool.innerHTML = `${player.packs["Tool"].length}`;
+
             let damageAvoided = 0;
             let dodges: Record<string, number> = {};
             for (let event of player.dodges)
@@ -210,32 +221,56 @@ RHU.import(RHU.module({ trace: new Error(),
                 fragment.append(row);
             }
             this.dodgetable.replaceChildren(fragment);
+
+            this.timeline.load(player);
+
+            if (damageAvoided > 0)
+                this.dodgetable.style.display = "block";
         }
         RHU.Macro(playerSummary, "playerSummary", //html
             `
             <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
-                <span rhu-id="name">Dodges</span>
+                <span>Timeline:</span>
+            </h2>
+            <div style="margin-bottom: 2rem;">
+                <rhu-macro rhu-id="timeline" rhu-type="graph"></rhu-macro>
+            </div>
+            <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
+                <span>Resources</span>
+            </h2>
+            <div style="margin-bottom: 2rem;">
+                <ul style="display: flex; gap: 2.5rem;">
+                    <li style="display: flex; gap: 1rem; align-items: center;">
+                        <img style="width: 4rem;" src="./icons/packs/Medi.webp"/>
+                        <span rhu-id="med">0</span>
+                    </li>
+                    <li style="display: flex; gap: 1rem; align-items: center;">
+                        <img style="width: 4rem;" src="./icons/packs/Ammo.webp"/>
+                        <span rhu-id="ammo">0</span>
+                    </li>
+                    <li style="display: flex; gap: 1rem; align-items: center;">
+                        <img style="width: 4rem;" src="./icons/packs/Tool.webp"/>
+                        <span rhu-id="tool">0</span>
+                    </li>
+                </ul>
+            </div>
+            <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
+                <span>Dodges</span>
             </h2>
             <div style="display: flex;">
                 <div style="flex: 0.7; padding-right: 1.5rem;">
                     <div style="margin-bottom: 1rem">
                         <ul style="display: flex; gap: 2.5rem;">
-                            <li style="flex: 1; display: flex;">
-                                Damage Avoided <div style="flex: 0.1"></div> <span style="color: #e9bc29;" rhu-id="damageAvoided">0</span> <div style="flex: 0.9"></div>
-                            </li>
-                            <li style="flex: 1; display: flex">
-                                
-                            </li>
-                            <li style="flex: 1; display: flex">
-                                
+                            <li style="flex: 1; display: flex; gap: 1rem;">
+                                Damage Avoided <span style="color: #e9bc29;" rhu-id="damageAvoided">0</span>
                             </li>
                         </ul>
                     </div>
-                    <table rhu-id="dodgetable">
+                    <table rhu-id="dodgetable" style="display: none;">
                     </table>
                 </div>
                 <div style="flex: 1; padding-left: 2rem;">
-                    Crazy
+                    <!-- TODO -->
                 </div>
             </div>
             `, {
@@ -285,12 +320,87 @@ RHU.import(RHU.module({ trace: new Error(),
                 fragment.append(row);
             }
             this.killtable.replaceChildren(fragment);
+
+            if (RHU.exists(gear.mines))
+            {
+                let mineInstance = document.createElement("ul");
+
+                let mines: GTFOMineInstance[] = [];
+                for (let mine in gear.mines)
+                    mines.push(gear.mines[mine]);
+                mines.sort((a, b) => b.timestamp - a.timestamp);
+                for (let mine of mines)
+                {
+                    let item = document.createElement("li");
+                    item.style.marginTop = "1rem";
+                    item.style.display = "flex";
+                    item.style.gap = "2rem";
+                    
+                    let wrapper = document.createElement("div");
+                    let icon = document.createElement("img");
+                    icon.style.width = "2rem";
+                    if (gear.name !== "Krieger O4")
+                        icon.src = "./icons/consumables/mine.webp";
+                    else
+                    icon.src = "./icons/consumables/mine.png";
+                    wrapper.append(icon);
+                    item.append(wrapper);
+
+                    let table = document.createElement("table");
+                    let kills: Record<string, number> = {};
+                    for (let id of mine.enemies.values())
+                    {
+                        let enemy = report.enemies.get(id)!;
+                        if (enemy.type in kills)
+                            kills[enemy.type] += 1;
+                        else
+                            kills[enemy.type] = 1;
+                    }
+                    let fragment = new DocumentFragment();
+                    if (true)
+                    {
+                        let row = document.createElement("tr");
+                        let col0 = document.createElement("td");
+                        col0.style.paddingBottom = "0.5rem";
+                        let col1 = document.createElement("td");
+                        col1.style.paddingBottom = "0.5rem";
+                        col0.innerHTML = `<u>Type</u>`;
+                        col1.style.paddingLeft = "2rem";
+                        col1.innerHTML = `<u>Kills</u>`;
+                        row.append(col0, col1);
+                        fragment.append(row);
+                    }
+                    for (let type in kills)
+                    {
+                        let row = document.createElement("tr");
+                        let col0 = document.createElement("td");
+                        let col1 = document.createElement("td");
+                        col0.innerHTML = type;
+                        col1.style.paddingLeft = "2rem";
+                        col1.innerHTML = kills[type].toString();
+                        row.append(col0, col1);
+                        fragment.append(row);
+                    }
+                    table.replaceChildren(fragment);
+
+                    item.append(table);
+
+                    mineInstance.append(item);
+                }
+
+                this.instances.replaceChildren();
+                this.instances.append(mineInstance);
+
+                if (mines.length > 0)
+                    this.instances.style.display = "block";
+            }
             
             this.damage.innerHTML = `${gear.damage.toFixed(2)}`;
             this.kills.innerHTML = `${total}`;
             this.assists.innerHTML = `${gear.enemies.size - total}`;
 
-            this.body.style.display = "block";
+            if (total > 0)
+                this.body.style.display = "block";
         }
         RHU.Macro(gearRecap, "gearRecap", //html
             `
@@ -302,24 +412,26 @@ RHU.import(RHU.module({ trace: new Error(),
                 <div style="flex: 0.7; padding-right: 1.5rem;">
                     <div style="margin-bottom: 1rem">
                         <ul style="display: flex; gap: 2.5rem;">
-                            <li style="flex: 1; display: flex;">
-                                Damage <div style="flex: 0.1;"></div> <span style="color: #e9bc29;" rhu-id="damage">0</span>
+                            <li style="display: flex; gap: 1rem;">
+                                Damage <span style="color: #e9bc29;" rhu-id="damage">0</span>
                             </li>
-                            <li style="flex: 1; display: flex">
-                                Kills <div style="flex: 0.1;"></div> <span rhu-id="kills">0</span>
+                            <li style="display: flex; gap: 1rem;">
+                                Kills <span rhu-id="kills">0</span>
                             </li>
-                            <li style="flex: 1; display: flex">
-                                Assists <div style="flex: 0.1;"></div> <span rhu-id="assists">0</span>
+                            <li style="display: flex; gap: 1rem;">
+                                Assists <span rhu-id="assists">0</span>
                             </li>
                         </ul>
                     </div>
                     <div rhu-id="body" style="display: none;">
                         <table rhu-id="killtable">
                         </table>
+                        <div rhu-id="instances">
+                        </div>
                     </div>
                 </div>
                 <div style="flex: 1; padding-left: 2rem;">
-                    Crazy
+                    <!-- TODO -->
                 </div>
             </div>
             `, {
@@ -404,6 +516,9 @@ RHU.import(RHU.module({ trace: new Error(),
                 self.panel.footer.replaceChildren(self.full);
                 self.panel.resize();
                 self.full.scrollIntoView({behavior: "smooth"});
+                requestAnimationFrame(() => { 
+                    self.full.summary.timeline.render(); 
+                });
             });
         } as Function as playerInfoConstructor;
         playerInfo.prototype.load = function(this: playerInfo, player: GTFOPlayerData): void
