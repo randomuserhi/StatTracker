@@ -433,8 +433,18 @@ RHU.import(RHU.module({ trace: new Error(),
                         item.append(time, content, img);
                         if (RHU.exists(e.enemyInstanceID)) {
                             let enemy = report.enemies.get(e.enemyInstanceID);
-                            if (RHU.exists(enemy))
-                                item.append(`${enemy.name} (${e.type})`);
+                            if (RHU.exists(enemy)) {
+                                let a = document.createElement("a");
+                                a.innerHTML = `${enemy.name} (${e.type})`;
+                                a.addEventListener("click", () => {
+                                    mount.enemiesBtn.click();
+                                    requestAnimationFrame(() => {
+                                        if (RHU.exists(enemy))
+                                            mount.navbar[1].panel.list.goTo(enemy.name);
+                                    });
+                                });
+                                item.append(a);
+                            }
                         }
                         else {
                             let player = report.allPlayers.get(e.playerID);

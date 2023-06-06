@@ -80,6 +80,26 @@ interface GTFOAchievementResult
 }
 
 let achievements: Record<string, GTFOAchievement> = {
+    "bullpup": {
+        precendence: -20,
+        name: "Noob",
+        alt: "Bro really took bullpup 😹",
+        award: function(report: GTFOReport)
+        {
+            for (let player of report.players.values())
+            {
+                for (let g in player.gears)
+                {
+                    let gear = player.gears[g];
+                    if (gear.name === "Accrat Golok DA")
+                        player.achievements.add({
+                            type: "bullpup",
+                            text: ``
+                        });
+                }
+            }
+        }
+    },
     "imposter": {
         precendence: -10,
         name: "Imposter",
@@ -176,6 +196,42 @@ let achievements: Record<string, GTFOAchievement> = {
             });
         }
     },
+    "faker": {
+        precendence: 15,
+        name: "Fancy Feet",
+        alt: "Most enemy damage avoided",
+        award: function(report: GTFOReport)
+        {
+            let calcAvoided = function(player: GTFOPlayerData): number
+            {
+                let count = 0;
+                for (let dodge of player.dodges)
+                {
+                    let enemy = report.enemies.get(dodge.enemyInstanceID);
+                    if (RHU.exists(enemy))
+                        count += report.spec.enemies[enemy.type].dodgeValue; 
+                }
+                return count;
+            }
+
+            let chosen = [...report.players.values()][0];
+            let avoided = calcAvoided(chosen);
+            for (let player of report.players.values())
+            {
+                let a = calcAvoided(player);
+                if (a > avoided)
+                {
+                    chosen = player;
+                    avoided = a;
+                }
+            }
+
+            chosen.achievements.add({
+                type: "faker",
+                text: `<span style="color: #e9bc29">${Math.round(avoided / 25 * 100)}</span> damage avoided`
+            });
+        }
+    },
     "angel": {
         precendence: 20,
         name: "Guardian Angel",
@@ -207,10 +263,11 @@ let achievements: Record<string, GTFOAchievement> = {
                 }
             }
 
-            chosen.achievements.add({
-                type: "angel",
-                text: `<span style="color: #e9bc29">${revives}</span> revives`
-            });
+            if (revives > 0)
+                chosen.achievements.add({
+                    type: "angel",
+                    text: `<span style="color: #e9bc29">${revives}</span> revives`
+                });
         }
     },
     "support": {
@@ -226,10 +283,11 @@ let achievements: Record<string, GTFOAchievement> = {
                 {
                     let gear = player.gears[g];
                     if (report.spec.gear[g].type === "tool") continue;
-                    assists += gear.enemies.size - [...gear.enemies.values()].filter((i) => {
+                    let a = [...gear.enemies.values()].filter((i) => {
                         let e = report.enemies.get(i);
                         return RHU.exists(e) && e.alive === false && RHU.exists(e.killer) && e.killer !== player.playerID;
                     }).length;
+                    assists += a;
                 }
                 return assists;
             }
@@ -246,10 +304,13 @@ let achievements: Record<string, GTFOAchievement> = {
                 }
             }
 
-            chosen.achievements.add({
-                type: "support",
-                text: `<span style="color: #e9bc29">${assists}</span> assists`
-            });
+            if (assists !== 0)
+            {
+                chosen.achievements.add({
+                    type: "support",
+                    text: `<span style="color: #e9bc29">${assists}</span> assists`
+                });
+            }
         }
     },
     "diligent": {
@@ -270,10 +331,11 @@ let achievements: Record<string, GTFOAchievement> = {
                 }
             }
 
-            chosen.achievements.add({
-                type: "diligent",
-                text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
-            });
+            if (time > 0)
+                chosen.achievements.add({
+                    type: "diligent",
+                    text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
+                });
         }
     },
     "killstealer": {
@@ -351,8 +413,9 @@ let achievements: Record<string, GTFOAchievement> = {
             {
                 let time = 0;
                 let prev: number | undefined;
-                for (let e of player.stateTimeline)
+                for (let i = 0; i < player.stateTimeline.length; ++i)
                 {
+                    let e = player.stateTimeline[i];
                     if (e.type === "Down")
                         prev = e.timestamp;
                     else if (e.type === "Checkpoint")
@@ -362,6 +425,12 @@ let achievements: Record<string, GTFOAchievement> = {
                     else if (e.type === "Revive" && RHU.exists(prev))
                     {
                         time += e.timestamp - prev;
+                        prev = undefined;
+                    }
+
+                    if (i === player.stateTimeline.length - 1)
+                    {
+                        time += report.timetaken - e.timestamp;
                         prev = undefined;
                     }
                 }
@@ -385,7 +454,39 @@ let achievements: Record<string, GTFOAchievement> = {
                 text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
             });
         }
-    }
+    },
+    "fragile": {
+        precendence: 60,
+        name: "Fragile",
+        alt: "Most medipacks consumed",
+        award: function(report: GTFOReport)
+        {
+            let calcConsumed = function(player: GTFOPlayerData): number
+            {
+                if (RHU.exists(player.packs["Health"]))
+                    return player.packs["Health"].length;
+                return 0;
+            }
+
+            let chosen = [...report.players.values()][0];
+            let consumed = calcConsumed(chosen);
+            for (let player of report.players.values())
+            {
+                let c = calcConsumed(player);
+                if (c > consumed)
+                {
+                    chosen = player;
+                    consumed = c;
+                }
+            }
+
+            if (consumed > 0)
+                chosen.achievements.add({
+                    type: "fragile",
+                    text: `<span style="color: #e9bc29">${consumed}</span> packs used`
+                });
+        }
+    },
 }
 
 interface GearData

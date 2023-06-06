@@ -2,6 +2,7 @@ interface reportmount extends HTMLDivElement
 {
     open(report: GTFOReport): void;
 
+    navbar: {btn: HTMLElement, panel: Panel}[];
     report: GTFOReport | null;
     view: "players" | "enemies";
     playersBtn: HTMLLIElement;
@@ -20,6 +21,7 @@ interface Panel extends HTMLElement
 
 interface enemyPanel extends Panel
 {
+    list: enemyList;
 }
 interface enemyPanelConstructor extends RHU.Macro.Constructor<enemyPanel>
 {
@@ -154,6 +156,8 @@ interface playerSummaryConstructor extends RHU.Macro.Constructor<playerSummary>
 {
 
 }
+
+let mount: reportmount;
 
 RHU.import(RHU.module({ trace: new Error(),
     name: "Report", hard: ["RHU.Macro", "RHU.Rest"],
@@ -409,7 +413,10 @@ RHU.import(RHU.module({ trace: new Error(),
             
             this.damage.innerHTML = `${gear.damage.toFixed(2)}`;
             this.kills.innerHTML = `${total}`;
-            this.assists.innerHTML = `${gear.enemies.size - total}`;
+            this.assists.innerHTML = `${[...gear.enemies.values()].filter((i) => {
+                let e = report.enemies.get(i);
+                return RHU.exists(e) && !e.alive && RHU.exists(e.killer) && e.killer !== player.playerID;
+            }).length}`;
 
             if (total > 0)
                 this.body.style.display = "block";
@@ -580,6 +587,7 @@ RHU.import(RHU.module({ trace: new Error(),
                 let icon = document.createElement("img");
                 icon.src = `./icons/achievements/${list[i].type}.png`;
                 icon.style.width = "5rem";
+                icon.style.padding = "0.5rem";
                 item.append(icon);
                 item.addEventListener("mouseover", () => {
                     if (RHU.exists(achievements[list[i].type]))
@@ -711,15 +719,22 @@ RHU.import(RHU.module({ trace: new Error(),
         {
 
         } as Function as enemyPanelConstructor;
+        enemyPanel.prototype.reset = function()
+        {
+            if (!RHU.exists(mount.report)) return;
+
+            this.list.load(mount.report);
+        }
         RHU.Macro(enemyPanel, "enemyPanel", //html
             `
-            ENEMIES
+            <div class="margins-wrapper">
+                <rhu-macro rhu-id="list" rhu-type="enemyList"></rhu-macro>
+            </div>
             `, {
                 element: //html
-                `<div class=""></div>`
+                `<div class="margins"></div>`
             });
 
-        let mount: reportmount;
         let reportmount = function(this: reportmount)
         {
             mount = this;
@@ -729,7 +744,7 @@ RHU.import(RHU.module({ trace: new Error(),
             this.view = "players";
             this.report = null;
 
-            let navbar: {btn: HTMLElement, panel: Panel}[] = [
+            this.navbar = [
                 {
                     btn: this.playersBtn, 
                     panel: document.createMacro("playerPanel")
@@ -739,6 +754,7 @@ RHU.import(RHU.module({ trace: new Error(),
                     panel: document.createMacro("enemyPanel")
                 }
             ];
+            let navbar = this.navbar;
             for (let { btn, panel } of navbar)
             {
                 btn.onclick = function()

@@ -47,7 +47,7 @@ RHU.import(RHU.module({ trace: new Error(),
                         <source src="https://storage.googleapis.com/gtfo-prod-v1/Trailer_for_website_Pro_Res_2_H_264_24fef05909/Trailer_for_website_Pro_Res_2_H_264_24fef05909.mp4" type="video/mp4">
                     </video>    
                     <div class="attraction-body">
-                        <button rhu-id="loadbtn">Load Report</button>
+                        <button rhu-id="loadbtn">LOAD REPORT</button>
                     </div>
                 </div>
             </main>

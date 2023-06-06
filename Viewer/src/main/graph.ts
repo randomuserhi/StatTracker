@@ -613,7 +613,18 @@ RHU.import(RHU.module({ trace: new Error(),
                         {
                             let enemy = report.enemies.get(e.enemyInstanceID);
                             if (RHU.exists(enemy))
-                                item!.append(`${enemy.name} (${e.type})`);
+                            {
+                                let a = document.createElement("a");
+                                a.innerHTML = `${enemy.name} (${e.type})`;
+                                a.addEventListener("click", () => {
+                                    mount.enemiesBtn.click();
+                                    requestAnimationFrame(() => { 
+                                        if (RHU.exists(enemy))
+                                            (mount.navbar[1].panel as enemyPanel).list.goTo(enemy.name);
+                                    });
+                                });
+                                item!.append(a);
+                            }
                         }
                         else
                         {

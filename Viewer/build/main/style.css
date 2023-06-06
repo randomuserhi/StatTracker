@@ -182,6 +182,16 @@ video
     border-top-width: 0.125rem;
 }
 
+a
+{
+    cursor: pointer;
+}
+a:hover
+{
+    text-decoration: underline;
+    color: #e9bc29;
+}
+
 .report-body
 {
     position: relative;
