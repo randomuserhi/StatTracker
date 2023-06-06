@@ -123,6 +123,7 @@ let achievements = {
                 let damage = 0;
                 for (let g in player.gears) {
                     let gear = player.gears[g];
+                    console.log(g);
                     if (report.spec.gear[g].type === "tool")
                         continue;
                     damage += gear.damage;
@@ -815,14 +816,14 @@ let GTFO_R7_R4 = {
             publicName: "TechMan Arbalist V",
             archytypeName: "Machine Gun"
         },
-        "Techman Veruta XII": {
+        "TechMan Veruta XII": {
             type: "secondary",
-            publicName: "Techman Veruta XII",
+            publicName: "TechMan Veruta XII",
             archytypeName: "Machine Gun"
         },
-        "Techman Klust 6": {
+        "TechMan Klust 6": {
             type: "secondary",
-            publicName: "Techman Klust 6",
+            publicName: "TechMan Klust 6",
             archytypeName: "Burst Cannon"
         },
         "Omneco EXP1": {
