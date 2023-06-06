@@ -51,6 +51,13 @@ namespace StatTracker.Patches
             if (!isMaster) return;
 
             sentryName = __instance.ArchetypeData.PublicName;
+            var instance = __instance.GetComponent<SentryGunInstance>();
+            if (instance != null)
+            {
+                sentryName = instance.PublicName;
+            }
+            else if (ConfigManager.Debug)
+                APILogger.Debug(Module.Name, $"Could not find sentry gun instance, this should not happen.");
             sentryShot = true;
         }
         [HarmonyPatch(typeof(SentryGunInstance_Firing_Bullets), nameof(SentryGunInstance_Firing_Bullets.UpdateFireShotgunSemi))]
