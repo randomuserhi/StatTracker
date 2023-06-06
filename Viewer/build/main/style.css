@@ -221,3 +221,36 @@ video
 {
     height: 5rem;
 }
+
+.margins
+{
+    width: 100%;
+}
+.margins-wrapper
+{
+    max-width: 800px;
+    margin: auto;
+}
+
+.achievements
+{
+    position: absolute;
+    visibility: hidden;
+    top: 100px;
+    font-family: 'Share Tech Mono';
+    font-size: 15px;
+    background-color: black;
+    border: 0.125rem solid;
+    border-left: 0.5rem solid;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem;
+}
+
+.achievement:has(>li:hover)+.achievements
+{
+    visibility: visible;
+}

@@ -118,7 +118,6 @@ namespace StatTracker
             Tongue,
             Melee,
             ShooterPellet,
-            Mine,
             PlayerBullet,
             PlayerExplosive
         }

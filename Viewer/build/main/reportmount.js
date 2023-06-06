@@ -64,57 +64,58 @@ RHU.import(RHU.module({ trace: new Error(),
                 fragment.append(row);
             }
             this.dodgetable.replaceChildren(fragment);
-            this.timeline.load(player);
+            this.timeline.load(player, report);
             if (damageAvoided > 0)
                 this.dodgetable.style.display = "block";
         };
         RHU.Macro(playerSummary, "playerSummary", `
-            <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
-                <span>Timeline:</span>
-            </h2>
             <div style="margin-bottom: 2rem;">
                 <rhu-macro rhu-id="timeline" rhu-type="graph"></rhu-macro>
             </div>
-            <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
-                <span>Resources</span>
-            </h2>
-            <div style="margin-bottom: 2rem;">
-                <ul style="display: flex; gap: 2.5rem;">
-                    <li style="display: flex; gap: 1rem; align-items: center;">
-                        <img style="width: 4rem;" src="./icons/packs/Medi.webp"/>
-                        <span rhu-id="med">0</span>
-                    </li>
-                    <li style="display: flex; gap: 1rem; align-items: center;">
-                        <img style="width: 4rem;" src="./icons/packs/Ammo.webp"/>
-                        <span rhu-id="ammo">0</span>
-                    </li>
-                    <li style="display: flex; gap: 1rem; align-items: center;">
-                        <img style="width: 4rem;" src="./icons/packs/Tool.webp"/>
-                        <span rhu-id="tool">0</span>
-                    </li>
-                    <li style="display: flex; gap: 1rem; align-items: center;">
-                        <img style="width: 4rem;" src="./icons/packs/Disinfect.webp"/>
-                        <span rhu-id="disinfect">0</span>
-                    </li>
-                </ul>
-            </div>
-            <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
-                <span>Dodges</span>
-            </h2>
-            <div style="display: flex;">
-                <div style="flex: 0.7; padding-right: 1.5rem;">
-                    <div style="margin-bottom: 1rem">
+            <div class="margins">
+                <div class="margins-wrapper">
+                    <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
+                        <span>Resources</span>
+                    </h2>
+                    <div style="margin-bottom: 2rem;">
                         <ul style="display: flex; gap: 2.5rem;">
-                            <li style="flex: 1; display: flex; gap: 1rem;">
-                                Damage Avoided <span style="color: #e9bc29;" rhu-id="damageAvoided">0</span>
+                            <li style="display: flex; gap: 1rem; align-items: center;">
+                                <img style="width: 4rem;" src="./icons/packs/Health.webp"/>
+                                <span rhu-id="med">0</span>
+                            </li>
+                            <li style="display: flex; gap: 1rem; align-items: center;">
+                                <img style="width: 4rem;" src="./icons/packs/Ammo.webp"/>
+                                <span rhu-id="ammo">0</span>
+                            </li>
+                            <li style="display: flex; gap: 1rem; align-items: center;">
+                                <img style="width: 4rem;" src="./icons/packs/Tool.webp"/>
+                                <span rhu-id="tool">0</span>
+                            </li>
+                            <li style="display: flex; gap: 1rem; align-items: center;">
+                                <img style="width: 4rem;" src="./icons/packs/Disinfect.webp"/>
+                                <span rhu-id="disinfect">0</span>
                             </li>
                         </ul>
                     </div>
-                    <table rhu-id="dodgetable" style="display: none;">
-                    </table>
-                </div>
-                <div style="flex: 1; padding-left: 2rem;">
-                    <!-- TODO -->
+                    <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
+                        <span>Dodges</span>
+                    </h2>
+                    <div style="display: flex;">
+                        <div style="flex: 0.7; padding-right: 1.5rem;">
+                            <div style="margin-bottom: 1rem">
+                                <ul style="display: flex; gap: 2.5rem;">
+                                    <li style="flex: 1; display: flex; gap: 1rem;">
+                                        Damage Avoided <span style="color: #e9bc29;" rhu-id="damageAvoided">0</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <table rhu-id="dodgetable" style="display: none;">
+                            </table>
+                        </div>
+                        <div style="flex: 1; padding-left: 2rem;">
+                            <!-- TODO -->
+                        </div>
+                    </div>
                 </div>
             </div>
             `, {
@@ -223,34 +224,35 @@ RHU.import(RHU.module({ trace: new Error(),
                 this.body.style.display = "block";
         };
         RHU.Macro(gearRecap, "gearRecap", `
-            <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
-                <img rhu-id="img" style="height: 4rem;" src=""/>
-                <span rhu-id="name">UNKNOWN</span>
-            </h2>
-            <div style="display: flex;">
-                <div style="flex: 0.7; padding-right: 1.5rem;">
-                    <div style="margin-bottom: 1rem">
-                        <ul style="display: flex; gap: 2.5rem;">
-                            <li style="display: flex; gap: 1rem;">
-                                Damage <span style="color: #e9bc29;" rhu-id="damage">0</span>
-                            </li>
-                            <li style="display: flex; gap: 1rem;">
-                                Kills <span rhu-id="kills">0</span>
-                            </li>
-                            <li style="display: flex; gap: 1rem;">
-                                Assists <span rhu-id="assists">0</span>
-                            </li>
-                        </ul>
-                    </div>
-                    <div rhu-id="body" style="display: none;">
-                        <table rhu-id="killtable">
-                        </table>
-                        <div rhu-id="instances">
+            <div class="margins">
+                <div class="margins-wrapper">
+                    <h2 style="display: flex; gap: 3rem; align-items: center; margin-bottom: 1rem;">
+                        <img rhu-id="img" style="height: 4rem;" src=""/>
+                        <span rhu-id="name">UNKNOWN</span>
+                    </h2>
+                    <div style="display: flex;">
+                        <div style="padding-right: 1.5rem;">
+                            <div style="margin-bottom: 1rem">
+                                <ul style="display: flex; gap: 2.5rem;">
+                                    <li style="display: flex; gap: 1rem;">
+                                        Damage <span style="color: #e9bc29;" rhu-id="damage">0</span>
+                                    </li>
+                                    <li style="display: flex; gap: 1rem;">
+                                        Kills <span rhu-id="kills">0</span>
+                                    </li>
+                                    <li style="display: flex; gap: 1rem;">
+                                        Assists <span rhu-id="assists">0</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div rhu-id="body" style="display: none;">
+                                <table rhu-id="killtable">
+                                </table>
+                                <div rhu-id="instances">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div style="flex: 1; padding-left: 2rem;">
-                    <!-- TODO -->
                 </div>
             </div>
             `, {
@@ -289,9 +291,13 @@ RHU.import(RHU.module({ trace: new Error(),
             }
         };
         RHU.Macro(playerInfoFull, "playerInfoFull", `
-            <h1 rhu-id="name" style="padding-top: 2rem;">DISCONNECTED</h1>
+            <div class="margins">
+                <div class="margins-wrapper">
+                    <h1 rhu-id="name" style="padding-top: 2rem; font-family: Share Tech Mono; font-weight: 800;">DISCONNECTED</h1>
+                </div>
+            </div>
             <div rhu-id="body" style="display: none;">
-                <rhu-macro rhu-id="summary" rhu-type="playerSummary" style="margin-top: 2rem;">
+                <rhu-macro rhu-id="summary" rhu-type="playerSummary">
                     <!-- player summary -->
                     <!-- key achievements -->
                 </rhu-macro>
@@ -313,6 +319,7 @@ RHU.import(RHU.module({ trace: new Error(),
             element: `<div></div>`
         });
         let playerInfo = function () {
+            this.loaded = false;
             const self = this;
             this.full = document.createMacro("playerInfoFull");
             this.addEventListener("click", function () {
@@ -325,6 +332,9 @@ RHU.import(RHU.module({ trace: new Error(),
             });
         };
         playerInfo.prototype.load = function (player) {
+            if (this.loaded)
+                return;
+            this.loaded = true;
             this.disconnected.style.display = "none";
             this.body.style.display = "block";
             this.name.innerHTML = player.name;
@@ -346,6 +356,25 @@ RHU.import(RHU.module({ trace: new Error(),
                 this.melee.innerHTML = loadout.melee.publicName;
                 this.meleeImg.src = `./icons/gear/${loadout.melee.publicName}.webp`;
             }
+            let list = report.getAchievements(player.playerID);
+            for (let i = 0; i < list.length && i < 4; ++i) {
+                let item = document.createElement("li");
+                let icon = document.createElement("img");
+                icon.src = `./icons/achievements/${list[i]}.png`;
+                icon.style.width = "5rem";
+                item.append(icon);
+                item.addEventListener("mouseover", () => {
+                    if (RHU.exists(achievements[list[i]])) {
+                        this.achievementName.innerHTML = achievements[list[i]].name;
+                        this.achievementAlt.innerHTML = achievements[list[i]].alt;
+                    }
+                    else {
+                        this.achievementName.innerHTML = "Unknown";
+                        this.achievementAlt.innerHTML = "Unknown";
+                    }
+                });
+                this.achievements.append(item);
+            }
             this.full.load(player.playerID);
         };
         RHU.Macro(playerInfo, "playerInfo", `
@@ -353,9 +382,20 @@ RHU.import(RHU.module({ trace: new Error(),
                 DISCONNECTED
             </div>
             <div style="display: none;" rhu-id="body">
-                <ul rhu-id="slotList" class="player-info-loadout" style="display: flex; flex-direction: column; gap: 1rem;">
+                <ul rhu-id="slotList" class="player-info-loadout" style="display: flex; flex-direction: column;">
                     <li style="padding: 0;">
                         <button rhu-id="name" style="width: 100%; --color: #dadad1;"></button>
+                    </li>
+                    <li style="position: relative;">
+                        <ul class="achievement" rhu-id="achievements" style="display: flex; padding-top: 0.5rem;">
+                        </ul>
+                        <div class="achievements">
+                            <h3 rhu-id="achievementName" style="
+                                font-family: 'Share Tech Mono';
+                                margin-bottom: 0.4rem;
+                            ">Guardian Angel</h3>
+                            <span rhu-id="achievementAlt" style="font-family: 'Share Tech Mono';">Some bloody text....</span>
+                        </div>
                     </li>
                     <li>
                         <div rhu-id="main"></div>
