@@ -9,6 +9,7 @@ using static Agents.AgentReplicatedActions;
 using GameData;
 using ChainedPuzzles;
 using Gear;
+using static UnityEngine.UIElements.UIRAtlasAllocator;
 
 namespace StatTracker.Patches
 {
@@ -47,7 +48,22 @@ namespace StatTracker.Patches
             currentShooter = null;
         }
 
-        public static Dictionary<int, EnemyAgent> projectileOwners = new Dictionary<int, EnemyAgent>();
+        public class ProjectileData
+        {
+            public EnemyAgent owner;
+            public GameObject projectile;
+            public bool markForRemoval;
+            public long timestamp;
+
+            public ProjectileData(EnemyAgent agent, GameObject proj)
+            {
+                owner = agent;
+                projectile = proj;
+                markForRemoval = false;
+                timestamp = 0;
+            }
+        }
+        public static Dictionary<int, ProjectileData> projectileOwners = new Dictionary<int, ProjectileData>();
 
         [HarmonyPatch(typeof(ProjectileManager), nameof(ProjectileManager.DoFireTargeting))]
         [HarmonyPrefix]
@@ -65,7 +81,7 @@ namespace StatTracker.Patches
             component.OnFire(comp);
 
             if (currentShooter != null)
-                projectileOwners.Add(projectile.GetInstanceID(), currentShooter);
+                projectileOwners.Add(projectile.GetInstanceID(), new ProjectileData(currentShooter, projectile));
             else if (ConfigManager.Debug)
                 APILogger.Debug(Module.Name, $"currentShooter was null, this should not happen.");
 
@@ -78,8 +94,24 @@ namespace StatTracker.Patches
         {
             if (!SNetwork.SNet.IsMaster) return;
 
-            if (projectileOwners.Remove(__instance.gameObject.GetInstanceID()))
-                APILogger.Debug(Module.Name, $"Projectile successfully removed.");
+            long now = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds();
+
+            int instance = __instance.gameObject.GetInstanceID();
+            if (projectileOwners.ContainsKey(instance))
+            {
+                projectileOwners[instance].markForRemoval = true;
+                projectileOwners[instance].timestamp = now;
+            }
+
+            int[] keys = projectileOwners.Keys.ToArray();
+            foreach (int id in keys)
+            {
+                if (projectileOwners[id].markForRemoval && now - projectileOwners[id].timestamp > ConfigManager.LingerTime)
+                {
+                    projectileOwners.Remove(id);
+                    if (ConfigManager.Debug) APILogger.Debug(Module.Name, $"Projectile successfully removed.");
+                }
+            }
         }
 
         private static EnemyAgent? hitByShooter = null;
@@ -90,14 +122,29 @@ namespace StatTracker.Patches
         {
             if (!SNetwork.SNet.IsMaster) return;
 
-            int instanceID = __instance.gameObject.GetInstanceID();
-            if (projectileOwners.ContainsKey(instanceID))
-                hitByShooter = projectileOwners[instanceID];
+            int instance = __instance.gameObject.GetInstanceID();
+            if (projectileOwners.ContainsKey(instance))
+                hitByShooter = projectileOwners[instance].owner;
             else if (ConfigManager.Debug)
                 APILogger.Debug(Module.Name, $"Projectile was not tracked, this should not happen.");
 
-            if (projectileOwners.Remove(__instance.gameObject.GetInstanceID()))
-                APILogger.Debug(Module.Name, $"Projectile successfully removed.");
+            long now = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds();
+
+            if (projectileOwners.ContainsKey(instance))
+            {
+                projectileOwners[instance].markForRemoval = true;
+                projectileOwners[instance].timestamp = now;
+            }
+
+            int[] keys = projectileOwners.Keys.ToArray();
+            foreach (int id in keys)
+            {
+                if (projectileOwners[id].markForRemoval && now - projectileOwners[id].timestamp > ConfigManager.LingerTime)
+                {
+                    projectileOwners.Remove(id);
+                    if (ConfigManager.Debug) APILogger.Debug(Module.Name, $"Projectile successfully removed.");
+                }
+            }
         }
 
         [HarmonyPatch(typeof(ProjectileBase), nameof(ProjectileBase.Collision))]
@@ -307,6 +354,7 @@ namespace StatTracker.Patches
             damageEvent.type = DamageEvent.Type.ShooterPellet;
             damageEvent.enemyInstanceID = null;
 
+            EnemyAgent owner;
             if (data.source.TryGet(out Agent sourceAgent))
             {
                 // Get enemy agent
@@ -316,13 +364,42 @@ namespace StatTracker.Patches
                     if (ConfigManager.Debug) APILogger.Debug(Module.Name, $"Could not find EnemyAgent, damage was done by agent of type: {sourceAgent.m_type.ToString()}.");
                     return;
                 }
-                EnemyData eData;
-                HostTracker.GetEnemyData(e, out eData);
-
-                damage = AgentModifierManager.ApplyModifier(sourceAgent, AgentModifier.StandardWeaponDamage, damage);
-
-                damageEvent.enemyInstanceID = eData.instanceID;
+                owner = e;
             }
+            else
+            {
+                // No source found attempting to approximate
+                if (ConfigManager.Debug) APILogger.Debug(Module.Name, $"No source found for shooter pellet, approximating");
+                float sqrdistance = float.PositiveInfinity;
+                EnemyAgent? e = null;
+                foreach (ProjectileData p in projectileOwners.Values)
+                {
+                    float dist = (__instance.Owner.Position - p.projectile.transform.position).sqrMagnitude;
+                    if (e == null || dist < sqrdistance)
+                    {
+                        e = p.owner;
+                        sqrdistance = dist;
+                    }
+                }
+                if (e == null)
+                {
+                    if (ConfigManager.Debug) APILogger.Debug(Module.Name, $"Received projectile damage, but there are no projectiles in level. This should not happen");
+                    return;
+                }
+                owner = e;
+                /*Task.Run(() => {
+                    
+                    for ()
+                    __instance.Owner.Position
+                });*/
+            }
+
+            EnemyData eData;
+            HostTracker.GetEnemyData(owner, out eData);
+
+            damage = AgentModifierManager.ApplyModifier(sourceAgent, AgentModifier.StandardWeaponDamage, damage);
+
+            damageEvent.enemyInstanceID = eData.instanceID;
 
             damageEvent.damage = damage;
             stats.damageTaken.Add(damageEvent);
@@ -797,7 +874,7 @@ namespace StatTracker.Patches
                         HostTracker.GetPlayer(target, out stats);
 
                         EnemyData e;
-                        HostTracker.GetEnemyData(projectileOwners[instanceID], out e);
+                        HostTracker.GetEnemyData(projectileOwners[instanceID].owner, out e);
 
                         DodgeEvent dodgeEvent = new DodgeEvent();
                         dodgeEvent.type = DodgeEvent.Type.Projectile;

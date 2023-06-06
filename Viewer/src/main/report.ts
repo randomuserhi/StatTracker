@@ -449,10 +449,11 @@ let achievements: Record<string, GTFOAchievement> = {
                 }
             }
 
-            chosen.achievements.add({
-                type: "sleepy",
-                text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
-            });
+            if (time > 0)
+                chosen.achievements.add({
+                    type: "sleepy",
+                    text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
+                });
         }
     },
     "fragile": {
@@ -863,9 +864,10 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
         for (let gear in player.gears)
         {
             let data = player.gears[gear];
-            p.gears[gear] = {
+            let gearname = RHU.exists(this.spec.gear[gear]) ? this.spec.gear[gear].publicName : gear;
+            p.gears[gearname] = {
                 playerID: p.playerID,
-                name: gear,
+                name: gearname,
                 archytype: RHU.exists(this.spec.gear[gear]) ? this.spec.gear[gear].archytypeName : "",
                 damage: data.damage,
                 enemies: new Set()
@@ -906,7 +908,7 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
 
             timestamp: data.timestamp,
             killer: data.killer,
-            killerGear: data.killerGear,
+            killerGear: RHU.exists(data.killerGear) && RHU.exists(this.spec.gear[data.killerGear]) ? this.spec.gear[data.killerGear].publicName : data.killerGear,
             mineInstance: data.mineInstance,
             
             limbData: {}
@@ -943,6 +945,7 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
                 for (let g in L.gears[p].gear)
                 {
                     let damage = L.gears[p].gear[g];
+                    g = RHU.exists(this.spec.gear[g]) ? this.spec.gear[g].publicName : g;
                     let G = this.getPlayerGear(p, g);
                     G.enemies.add(id);
                     limb.gears[g] = {
@@ -1063,7 +1066,8 @@ type GTFOEnemyType =
     "Baby Striker" | "Striker" | "Big Striker" | 
     "Shooter" | "Big Shooter" | "Hybrid" |
     "Charger" | "Big Charger" |
-    "Charger Scout" | "Scout" |
+    "Charger Scout" | "Scout" | "Shadow Scout" |
+    "Shadow" | "Big Shadow" |
     "Tank" |
     "Mother" |
     "Snatcher";
@@ -1120,9 +1124,34 @@ let GTFO_ChargerScout: GTFOEnemy = {
     type: "Charger Scout",
     dodgeValue: 0 // can't dodge => no tongue
 }
+let GTFO_ShadowScout: GTFOEnemy = {
+    type: "Shadow Scout",
+    dodgeValue: 3
+}
+
+let GTFO_Shadow: GTFOEnemy = {
+    type: "Shadow",
+    dodgeValue: 3
+}
+let GTFO_BigShadow: GTFOEnemy = {
+    type: "Big Shadow",
+    dodgeValue: 6
+}
+
+let GTFO_Tank: GTFOEnemy = {
+    type: "Tank",
+    dodgeValue: 3.5
+}
+
+let GTFO_Snatcher: GTFOEnemy = {
+    type: "Snatcher",
+    dodgeValue: 4.5
+}
 
 let GTFO_R7_R4: GTFOSpec = {
     enemies: {
+        "Shadow": GTFO_Shadow,
+        "Big Shadow": GTFO_BigShadow,
         "Shooter": GTFO_Shooter,
         "Big Shooter": GTFO_BigShooter,
         "Hybrid": GTFO_Hybrid,
@@ -1132,6 +1161,13 @@ let GTFO_R7_R4: GTFOSpec = {
         "Big Charger": GTFO_BigCharger,
         "Scout": GTFO_Scout,
         "Charger Scout": GTFO_ChargerScout,
+        "Shadow Scout": GTFO_ShadowScout,
+
+        "Tank": GTFO_Tank,
+        "Snatcher": GTFO_Snatcher,
+        "Pouncer": GTFO_Snatcher,
+
+        "Scout_Shadow": GTFO_ShadowScout,
 
         "Shooter_Wave": GTFO_Shooter,
         "Shooter_Hibernate": GTFO_Shooter,
@@ -1139,8 +1175,11 @@ let GTFO_R7_R4: GTFOSpec = {
         "Shooter_Big_RapidFire": GTFO_Hybrid,
         "Striker_Wave": GTFO_Striker,
         "Striker_Hibernate": GTFO_Striker,
+        "Striker_Big_Hibernate": GTFO_BigStriker,
         "Striker_Big_Wave": GTFO_BigStriker,
-        "Scout_Bullrush": GTFO_ChargerScout
+        "Scout_Bullrush": GTFO_ChargerScout,
+        "Striker_Big_Bullrush": GTFO_BigCharger,
+        "Striker_Big_Shadow": GTFO_BigShadow,
     },
     packs: {
         "Ammo": "Ammo",
@@ -1229,9 +1268,9 @@ let GTFO_R7_R4: GTFOSpec = {
             publicName: "Buckland AF6",
             archytypeName: "Combat Shotgun"
         },
-        "Buckland XDIST2": {
+        "Buckland XDist2": {
             type: "secondary",
-            publicName: "Buckland XDIST2",
+            publicName: "Buckland XDist2",
             archytypeName: "Choke Mod Shotgun"
         },
         "Mastaba R66": {
@@ -1239,9 +1278,9 @@ let GTFO_R7_R4: GTFOSpec = {
             publicName: "Mastaba R66",
             archytypeName: "Revolver"
         },
-        "Techman Arbalist V": {
+        "TechMan Arbalist V": {
             type: "secondary",
-            publicName: "Techman Arbalist V",
+            publicName: "TechMan Arbalist V",
             archytypeName: "Machine Gun"
         },
         "Techman Veruta XII": {
@@ -1309,9 +1348,14 @@ let GTFO_R7_R4: GTFOSpec = {
             publicName: "Mechatronic B5 LFR",
             archytypeName: "Shotgun Sentry"
         },
-        "AutoTek 51 RSG": {
+        "Autotek 51 RSG": {
             type: "tool",
-            publicName: "AutoTek 51 RSG",
+            publicName: "Autotek 51 RSG",
+            archytypeName: "Sniper Sentry"
+        },
+        "utotek 51 RSG": { // Not sure where this comes from
+            type: "tool",
+            publicName: "Autotek 51 RSG",
             archytypeName: "Sniper Sentry"
         },
         "Rad Labs Meduza": {
@@ -1319,9 +1363,9 @@ let GTFO_R7_R4: GTFOSpec = {
             publicName: "Rad Labs Meduza",
             archytypeName: "Auto Sentry"
         },
-        "D-Tek Optron IV": {
+        "D-tek Optron IV": {
             type: "tool",
-            publicName: "D-Tek Optron IV",
+            publicName: "D-tek Optron IV",
             archytypeName: "Bio Tracker"
         },
         "Stalwart G2": {

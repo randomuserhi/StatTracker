@@ -349,10 +349,11 @@ let achievements = {
                     time = t;
                 }
             }
-            chosen.achievements.add({
-                type: "sleepy",
-                text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
-            });
+            if (time > 0)
+                chosen.achievements.add({
+                    type: "sleepy",
+                    text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
+                });
         }
     },
     "fragile": {
@@ -465,9 +466,10 @@ let GTFOReport = function (type, json) {
         }
         for (let gear in player.gears) {
             let data = player.gears[gear];
-            p.gears[gear] = {
+            let gearname = RHU.exists(this.spec.gear[gear]) ? this.spec.gear[gear].publicName : gear;
+            p.gears[gearname] = {
                 playerID: p.playerID,
-                name: gear,
+                name: gearname,
                 archytype: RHU.exists(this.spec.gear[gear]) ? this.spec.gear[gear].archytypeName : "",
                 damage: data.damage,
                 enemies: new Set()
@@ -499,7 +501,7 @@ let GTFOReport = function (type, json) {
             healthMax: data.healthMax,
             timestamp: data.timestamp,
             killer: data.killer,
-            killerGear: data.killerGear,
+            killerGear: RHU.exists(data.killerGear) && RHU.exists(this.spec.gear[data.killerGear]) ? this.spec.gear[data.killerGear].publicName : data.killerGear,
             mineInstance: data.mineInstance,
             limbData: {}
         };
@@ -527,6 +529,7 @@ let GTFOReport = function (type, json) {
             for (let p in L.gears) {
                 for (let g in L.gears[p].gear) {
                     let damage = L.gears[p].gear[g];
+                    g = RHU.exists(this.spec.gear[g]) ? this.spec.gear[g].publicName : g;
                     let G = this.getPlayerGear(p, g);
                     G.enemies.add(id);
                     limb.gears[g] = {
@@ -660,8 +663,30 @@ let GTFO_ChargerScout = {
     type: "Charger Scout",
     dodgeValue: 0
 };
+let GTFO_ShadowScout = {
+    type: "Shadow Scout",
+    dodgeValue: 3
+};
+let GTFO_Shadow = {
+    type: "Shadow",
+    dodgeValue: 3
+};
+let GTFO_BigShadow = {
+    type: "Big Shadow",
+    dodgeValue: 6
+};
+let GTFO_Tank = {
+    type: "Tank",
+    dodgeValue: 3.5
+};
+let GTFO_Snatcher = {
+    type: "Snatcher",
+    dodgeValue: 4.5
+};
 let GTFO_R7_R4 = {
     enemies: {
+        "Shadow": GTFO_Shadow,
+        "Big Shadow": GTFO_BigShadow,
         "Shooter": GTFO_Shooter,
         "Big Shooter": GTFO_BigShooter,
         "Hybrid": GTFO_Hybrid,
@@ -671,14 +696,22 @@ let GTFO_R7_R4 = {
         "Big Charger": GTFO_BigCharger,
         "Scout": GTFO_Scout,
         "Charger Scout": GTFO_ChargerScout,
+        "Shadow Scout": GTFO_ShadowScout,
+        "Tank": GTFO_Tank,
+        "Snatcher": GTFO_Snatcher,
+        "Pouncer": GTFO_Snatcher,
+        "Scout_Shadow": GTFO_ShadowScout,
         "Shooter_Wave": GTFO_Shooter,
         "Shooter_Hibernate": GTFO_Shooter,
         "Shooter_Big": GTFO_BigShooter,
         "Shooter_Big_RapidFire": GTFO_Hybrid,
         "Striker_Wave": GTFO_Striker,
         "Striker_Hibernate": GTFO_Striker,
+        "Striker_Big_Hibernate": GTFO_BigStriker,
         "Striker_Big_Wave": GTFO_BigStriker,
-        "Scout_Bullrush": GTFO_ChargerScout
+        "Scout_Bullrush": GTFO_ChargerScout,
+        "Striker_Big_Bullrush": GTFO_BigCharger,
+        "Striker_Big_Shadow": GTFO_BigShadow,
     },
     packs: {
         "Ammo": "Ammo",
@@ -767,9 +800,9 @@ let GTFO_R7_R4 = {
             publicName: "Buckland AF6",
             archytypeName: "Combat Shotgun"
         },
-        "Buckland XDIST2": {
+        "Buckland XDist2": {
             type: "secondary",
-            publicName: "Buckland XDIST2",
+            publicName: "Buckland XDist2",
             archytypeName: "Choke Mod Shotgun"
         },
         "Mastaba R66": {
@@ -777,9 +810,9 @@ let GTFO_R7_R4 = {
             publicName: "Mastaba R66",
             archytypeName: "Revolver"
         },
-        "Techman Arbalist V": {
+        "TechMan Arbalist V": {
             type: "secondary",
-            publicName: "Techman Arbalist V",
+            publicName: "TechMan Arbalist V",
             archytypeName: "Machine Gun"
         },
         "Techman Veruta XII": {
@@ -847,9 +880,14 @@ let GTFO_R7_R4 = {
             publicName: "Mechatronic B5 LFR",
             archytypeName: "Shotgun Sentry"
         },
-        "AutoTek 51 RSG": {
+        "Autotek 51 RSG": {
             type: "tool",
-            publicName: "AutoTek 51 RSG",
+            publicName: "Autotek 51 RSG",
+            archytypeName: "Sniper Sentry"
+        },
+        "utotek 51 RSG": {
+            type: "tool",
+            publicName: "Autotek 51 RSG",
             archytypeName: "Sniper Sentry"
         },
         "Rad Labs Meduza": {
@@ -857,9 +895,9 @@ let GTFO_R7_R4 = {
             publicName: "Rad Labs Meduza",
             archytypeName: "Auto Sentry"
         },
-        "D-Tek Optron IV": {
+        "D-tek Optron IV": {
             type: "tool",
-            publicName: "D-Tek Optron IV",
+            publicName: "D-tek Optron IV",
             archytypeName: "Bio Tracker"
         },
         "Stalwart G2": {

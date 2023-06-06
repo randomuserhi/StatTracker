@@ -312,7 +312,7 @@ namespace StatTracker.Patches
                 {
                     // Get weapon used
                     ItemEquippable currentEquipped = p.Inventory.WieldedItem;
-                    if (currentEquipped.IsWeapon && currentEquipped.CanReload)
+                    if (currentEquipped.IsWeapon)
                     {
                         // player stats
                         GearData weapon = stats.gears[currentEquipped.PublicName];
@@ -323,7 +323,7 @@ namespace StatTracker.Patches
 
                         if (ConfigManager.Debug)
                         {
-                            APILogger.Debug(Module.Name, $"[Prefix] {damage} Bullet Damage done by {p.PlayerName}. Weapon: {weapon.name} IsBot: {p.Owner.IsBot}");
+                            APILogger.Debug(Module.Name, $"[Prefix] {weapon.name} did {damage} Bullet Damage done by {p.PlayerName}. Weapon: {weapon.name} IsBot: {p.Owner.IsBot}");
                             APILogger.Debug(Module.Name, $"[Prefix] {weapon.name}: {weapon.damage}");
                         }
 
@@ -342,7 +342,7 @@ namespace StatTracker.Patches
                         }
                     }
                     else if (ConfigManager.Debug)
-                        APILogger.Debug(Module.Name, $"[Prefix] Currently equipped is not a reloadable weapon, this should not happen.\nIsWeapon: {currentEquipped.IsWeapon}\nCanReload: {currentEquipped.CanReload}");
+                        APILogger.Debug(Module.Name, $"[Prefix] Currently equipped is not a weapon, this should not happen.\nIsWeapon: {currentEquipped.IsWeapon}\nCanReload: {currentEquipped.CanReload}");
                 }
                 else if (sentryName != null) // Damage done by sentry
                 {
@@ -396,13 +396,13 @@ namespace StatTracker.Patches
                 {
                     // Get weapon used
                     ItemEquippable currentEquipped = p.Inventory.WieldedItem;
-                    if (currentEquipped.IsWeapon && currentEquipped.CanReload)
+                    if (currentEquipped.IsWeapon)
                     {
                         // player stats
                         lData.breakerGear = currentEquipped.PublicName;
                     }
                     else if (ConfigManager.Debug)
-                        APILogger.Debug(Module.Name, $"[Postfix] Currently equipped is not a reloadable weapon, this should not happen.\nIsWeapon: {currentEquipped.IsWeapon}\nCanReload: {currentEquipped.CanReload}");
+                        APILogger.Debug(Module.Name, $"[Postfix] Currently equipped is not a weapon, this should not happen.\nIsWeapon: {currentEquipped.IsWeapon}\nCanReload: {currentEquipped.CanReload}");
                 }
                 else if (sentryName != null) // Damage done by sentry
                 {

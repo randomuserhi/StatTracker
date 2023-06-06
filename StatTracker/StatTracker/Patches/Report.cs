@@ -344,7 +344,7 @@ namespace StatTracker.Patches
                 {
                     File.WriteAllText(Path.Join(ConfigManager.ReportPath, $"{shortName}-{DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")}.json"), msg);
                 }
-                catch (Exception _)
+                catch (Exception)
                 {
                     APILogger.Debug(Module.Name, $"Failed to save file to {ConfigManager.ReportPath}");
                 }
