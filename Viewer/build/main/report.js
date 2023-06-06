@@ -36,6 +36,17 @@ const shuffle = (array, random = Math.random) => {
     }
     return array;
 };
+let timeToString = function (time) {
+    let seconds = Math.floor(time / 1000);
+    let minutes = Math.floor(seconds / 60);
+    let hours = Math.floor(minutes / 60);
+    let s = seconds - minutes * 60;
+    let m = minutes - hours * 60;
+    if (hours > 0)
+        return `${hours.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    else
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
 let achievements = {
     "imposter": {
         precendence: -10,
@@ -65,7 +76,10 @@ let achievements = {
                 }
             }
             if (damage > 12.5)
-                chosen.achievements.add("imposter");
+                chosen.achievements.add({
+                    type: "imposter",
+                    text: `<span style="color: #e9bc29">${(damage / 25 * 100).toFixed(2)}</span> damage dealt`
+                });
         }
     },
     "Perfect": {
@@ -75,7 +89,10 @@ let achievements = {
         award: function (report) {
             for (let player of report.players.values()) {
                 if (player.damageTimeline.length === 0 && player.infectionTimeline.filter((i) => i.value != 0).length === 0) {
-                    player.achievements.add("Perfect");
+                    player.achievements.add({
+                        type: "Perfect",
+                        text: ""
+                    });
                 }
             }
         }
@@ -104,7 +121,10 @@ let achievements = {
                     damage = d;
                 }
             }
-            chosen.achievements.add("MVP");
+            chosen.achievements.add({
+                type: "MVP",
+                text: `<span style="color: #e9bc29">${(damage).toFixed(2)}</span> damage dealt`
+            });
         }
     },
     "angel": {
@@ -130,7 +150,10 @@ let achievements = {
                     revives = r;
                 }
             }
-            chosen.achievements.add("angel");
+            chosen.achievements.add({
+                type: "angel",
+                text: `<span style="color: #e9bc29">${revives}</span> revives`
+            });
         }
     },
     "support": {
@@ -160,7 +183,10 @@ let achievements = {
                     assists = a;
                 }
             }
-            chosen.achievements.add("support");
+            chosen.achievements.add({
+                type: "support",
+                text: `<span style="color: #e9bc29">${assists}</span> assists`
+            });
         }
     },
     "diligent": {
@@ -177,7 +203,10 @@ let achievements = {
                     time = t;
                 }
             }
-            chosen.achievements.add("diligent");
+            chosen.achievements.add({
+                type: "diligent",
+                text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
+            });
         }
     },
     "killstealer": {
@@ -226,8 +255,12 @@ let achievements = {
                     kills = k;
                 }
             }
-            if (MVP !== chosen)
-                chosen.achievements.add("killstealer");
+            if (MVP !== chosen) {
+                chosen.achievements.add({
+                    type: "killstealer",
+                    text: `<span style="color: #e9bc29">${kills}</span> kills`
+                });
+            }
         }
     },
     "sleepy": {
@@ -241,6 +274,9 @@ let achievements = {
                 for (let e of player.stateTimeline) {
                     if (e.type === "Down")
                         prev = e.timestamp;
+                    else if (e.type === "Checkpoint") {
+                        prev = undefined;
+                    }
                     else if (e.type === "Revive" && RHU.exists(prev)) {
                         time += e.timestamp - prev;
                         prev = undefined;
@@ -257,7 +293,10 @@ let achievements = {
                     time = t;
                 }
             }
-            chosen.achievements.add("sleepy");
+            chosen.achievements.add({
+                type: "sleepy",
+                text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
+            });
         }
     }
 };
@@ -439,7 +478,7 @@ GTFOReport.prototype.getAchievements = function (id) {
     let list = [];
     if (RHU.exists(player)) {
         list = [...player.achievements.values()];
-        list.sort((a, b) => { return achievements[a].precendence - achievements[b].precendence; });
+        list.sort((a, b) => { return achievements[a.type].precendence - achievements[b.type].precendence; });
     }
     return list;
 };

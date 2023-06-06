@@ -360,13 +360,14 @@ RHU.import(RHU.module({ trace: new Error(),
             for (let i = 0; i < list.length && i < 4; ++i) {
                 let item = document.createElement("li");
                 let icon = document.createElement("img");
-                icon.src = `./icons/achievements/${list[i]}.png`;
+                icon.src = `./icons/achievements/${list[i].type}.png`;
                 icon.style.width = "5rem";
                 item.append(icon);
                 item.addEventListener("mouseover", () => {
-                    if (RHU.exists(achievements[list[i]])) {
-                        this.achievementName.innerHTML = achievements[list[i]].name;
-                        this.achievementAlt.innerHTML = achievements[list[i]].alt;
+                    if (RHU.exists(achievements[list[i].type])) {
+                        this.achievementName.innerHTML = achievements[list[i].type].name;
+                        this.achievementAlt.innerHTML = achievements[list[i].type].alt;
+                        this.achievementAlt.append(RHU.Macro.parseDomString(`<div style="font-family: 'Share Tech Mono'; text-align: center;">${list[i].text}</div>`));
                     }
                     else {
                         this.achievementName.innerHTML = "Unknown";
@@ -393,8 +394,8 @@ RHU.import(RHU.module({ trace: new Error(),
                             <h3 rhu-id="achievementName" style="
                                 font-family: 'Share Tech Mono';
                                 margin-bottom: 0.4rem;
-                            ">Guardian Angel</h3>
-                            <span rhu-id="achievementAlt" style="font-family: 'Share Tech Mono';">Some bloody text....</span>
+                            "></h3>
+                            <span rhu-id="achievementAlt" style="font-family: 'Share Tech Mono'; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;"></span>
                         </div>
                     </li>
                     <li>

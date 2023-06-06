@@ -64,19 +64,6 @@ RHU.import(RHU.module({ trace: new Error(),
             GTFOIcons.set("checkpoint", img)
         }
 
-        let timeToString: (time: number) => string = function(time)
-        {
-            let seconds = Math.floor(time / 1000);
-            let minutes = Math.floor(seconds / 60);
-            let hours = Math.floor(minutes / 60);
-            let s = seconds - minutes * 60;
-            let m = minutes - hours * 60;
-            if (hours > 0)
-                return `${hours.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            else
-                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        }
-
         let graph = function(this: graph)
         {
             this.GTFOEnemyIcons = new Map<string, HTMLImageElement>();

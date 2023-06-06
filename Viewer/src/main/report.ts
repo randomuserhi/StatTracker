@@ -52,12 +52,31 @@ const shuffle = (array: any[], random = Math.random) =>
     return array
 }
 
+let timeToString: (time: number) => string = function(time)
+{
+    let seconds = Math.floor(time / 1000);
+    let minutes = Math.floor(seconds / 60);
+    let hours = Math.floor(minutes / 60);
+    let s = seconds - minutes * 60;
+    let m = minutes - hours * 60;
+    if (hours > 0)
+        return `${hours.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    else
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
 interface GTFOAchievement
 {
     precendence: number,
     name: string,
     alt: string,
     award(report: GTFOReport): void
+}
+
+interface GTFOAchievementResult
+{
+    type: string,
+    text: string
 }
 
 let achievements: Record<string, GTFOAchievement> = {
@@ -97,7 +116,10 @@ let achievements: Record<string, GTFOAchievement> = {
             }
 
             if (damage > 12.5)
-                chosen.achievements.add("imposter");
+                chosen.achievements.add({
+                    type: "imposter",
+                    text: `<span style="color: #e9bc29">${(damage / 25 * 100).toFixed(2)}</span> damage dealt`
+                });
         }
     },
     "Perfect": {
@@ -110,7 +132,10 @@ let achievements: Record<string, GTFOAchievement> = {
             {
                 if (player.damageTimeline.length === 0 && player.infectionTimeline.filter((i) => i.value != 0).length === 0)
                 {
-                    player.achievements.add("Perfect");
+                    player.achievements.add({
+                        type: "Perfect",
+                        text: ""
+                    });
                 }
             }
         }
@@ -145,7 +170,10 @@ let achievements: Record<string, GTFOAchievement> = {
                 }
             }
 
-            chosen.achievements.add("MVP");
+            chosen.achievements.add({
+                type: "MVP",
+                text: `<span style="color: #e9bc29">${(damage).toFixed(2)}</span> damage dealt`
+            });
         }
     },
     "angel": {
@@ -179,7 +207,10 @@ let achievements: Record<string, GTFOAchievement> = {
                 }
             }
 
-            chosen.achievements.add("angel");
+            chosen.achievements.add({
+                type: "angel",
+                text: `<span style="color: #e9bc29">${revives}</span> revives`
+            });
         }
     },
     "support": {
@@ -215,7 +246,10 @@ let achievements: Record<string, GTFOAchievement> = {
                 }
             }
 
-            chosen.achievements.add("support");
+            chosen.achievements.add({
+                type: "support",
+                text: `<span style="color: #e9bc29">${assists}</span> assists`
+            });
         }
     },
     "diligent": {
@@ -236,7 +270,10 @@ let achievements: Record<string, GTFOAchievement> = {
                 }
             }
 
-            chosen.achievements.add("diligent");
+            chosen.achievements.add({
+                type: "diligent",
+                text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
+            });
         }
     },
     "killstealer": {
@@ -296,7 +333,12 @@ let achievements: Record<string, GTFOAchievement> = {
             }
 
             if (MVP !== chosen)
-                chosen.achievements.add("killstealer");
+            {
+                chosen.achievements.add({
+                    type: "killstealer",
+                    text: `<span style="color: #e9bc29">${kills}</span> kills`
+                });
+            }
         }
     },
     "sleepy": {
@@ -313,6 +355,10 @@ let achievements: Record<string, GTFOAchievement> = {
                 {
                     if (e.type === "Down")
                         prev = e.timestamp;
+                    else if (e.type === "Checkpoint")
+                    {
+                        prev = undefined;
+                    }
                     else if (e.type === "Revive" && RHU.exists(prev))
                     {
                         time += e.timestamp - prev;
@@ -334,7 +380,10 @@ let achievements: Record<string, GTFOAchievement> = {
                 }
             }
 
-            chosen.achievements.add("sleepy");
+            chosen.achievements.add({
+                type: "sleepy",
+                text: `<span style="color: #e9bc29">${timeToString(time)}</span> time spent`
+            });
         }
     }
 }
@@ -563,7 +612,7 @@ interface GTFOPlayerData
     healthMax: number;
     timeSpentInScan: number;
 
-    achievements: Set<string>;
+    achievements: Set<GTFOAchievementResult>;
     
     stateTimeline: GTFOPlayerStateEvent[];
     infectionTimeline: GTFOInfectionEvent[];
@@ -589,7 +638,7 @@ interface GTFOReport
     players: Map<string, GTFOPlayerData>;
     enemies: Map<string, GTFOEnemyData>;
 
-    getAchievements(id: string): string[];
+    getAchievements(id: string): GTFOAchievementResult[];
     getLoadout(id: string): GTFOLoadout;
     getPlayerGear(id: string, gear: string): GTFOGearData;
     getPlayerGearKills(id: string, gear: string): Record<string, number>;
@@ -824,14 +873,14 @@ let GTFOReport: GTFOReportConstructor = function(this: GTFOReport, type: string,
 
     console.log(this);
 } as Function as GTFOReportConstructor;
-GTFOReport.prototype.getAchievements = function(id: string): string[]
+GTFOReport.prototype.getAchievements = function(id: string): GTFOAchievementResult[]
 {
     let player = this.players.get(id);
-    let list: string[] = [];
+    let list: GTFOAchievementResult[] = [];
     if (RHU.exists(player))
     {
         list = [...player.achievements.values()];
-        list.sort((a, b) => { return achievements[a].precendence - achievements[b].precendence });
+        list.sort((a, b) => { return achievements[a.type].precendence - achievements[b.type].precendence });
     }
     return list;
 }
