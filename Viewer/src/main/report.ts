@@ -172,7 +172,6 @@ let achievements: Record<string, GTFOAchievement> = {
                 for (let g in player.gears)
                 {
                     let gear = player.gears[g];
-                    console.log(g);
                     if (report.spec.gear[g].type === "tool") continue;
                     damage += gear.damage;
                 }
@@ -1369,9 +1368,9 @@ let GTFO_R7_R4: GTFOSpec = {
             publicName: "D-tek Optron IV",
             archytypeName: "Bio Tracker"
         },
-        "Stalwart G2": {
+        "Stalwart Flow G2": {
             type: "tool",
-            publicName: "Stalwart G2",
+            publicName: "Stalwart Flow G2",
             archytypeName: "C-Foam Launcher"
         },
         "Krieger O4": {
