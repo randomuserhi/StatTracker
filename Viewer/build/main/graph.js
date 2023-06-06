@@ -429,7 +429,7 @@ RHU.import(RHU.module({ trace: new Error(),
                             img.src = `./icons/gear/${e.gearName}.webp`;
                         }
                         let content = document.createElement("span");
-                        content.innerHTML = `<span style="font-weight: 800;">${Math.round(value / self.healthMax * 100)}</span> damage dealt by`;
+                        content.innerHTML = `<span style="font-weight: 800;">${Math.round(value / self.healthMax * 100)}</span> damage taken from`;
                         item.append(time, content, img);
                         if (RHU.exists(e.enemyInstanceID)) {
                             let enemy = report.enemies.get(e.enemyInstanceID);
