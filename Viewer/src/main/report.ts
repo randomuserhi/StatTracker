@@ -417,7 +417,14 @@ let achievements: Record<string, GTFOAchievement> = {
                 {
                     let e = player.stateTimeline[i];
                     if (e.type === "Down")
-                        prev = e.timestamp;
+                    {
+                        if (i === player.stateTimeline.length - 1)
+                        {
+                            time += report.timetaken - e.timestamp;
+                            prev = undefined;
+                        }
+                        else prev = e.timestamp;
+                    }
                     else if (e.type === "Checkpoint")
                     {
                         prev = undefined;
@@ -425,12 +432,6 @@ let achievements: Record<string, GTFOAchievement> = {
                     else if (e.type === "Revive" && RHU.exists(prev))
                     {
                         time += e.timestamp - prev;
-                        prev = undefined;
-                    }
-
-                    if (i === player.stateTimeline.length - 1)
-                    {
-                        time += report.timetaken - e.timestamp;
                         prev = undefined;
                     }
                 }
@@ -486,6 +487,41 @@ let achievements: Record<string, GTFOAchievement> = {
                     type: "fragile",
                     text: `<span style="color: #e9bc29">${consumed}</span> packs used`
                 });
+        }
+    },
+    "lazy": {
+        precendence: 70,
+        name: "Lazy",
+        alt: "Deal more damage with your sentry than your guns.",
+        award: function(report: GTFOReport)
+        {
+            for (let player of report.players.values())
+            {
+                let playerDamage = 0;
+                for (let g in player.gears)
+                {
+                    let gear = player.gears[g];
+                    if (report.spec.gear[g].type === "tool" || report.spec.gear[g].type === "melee") continue;
+                    playerDamage += gear.damage;
+                }
+                let sentryDamage = 0;
+                for (let g in player.gears)
+                {
+                    let gear = player.gears[g];
+                    if (report.spec.gear[g].type !== "tool") continue;
+                    if (report.spec.gear[g].archytypeName.toLowerCase().includes("sentry"))
+                    {
+                        sentryDamage += gear.damage;
+                    }
+                }
+                if (sentryDamage > playerDamage)
+                {
+                    player.achievements.add({
+                        type: "lazy",
+                        text: `Sentry did <span style="color: #e9bc29">${Math.ceil((sentryDamage / playerDamage - 1) * 100)}%</span> more damage.`
+                    });
+                }
+            }
         }
     },
 }
